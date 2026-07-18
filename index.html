@@ -1,0 +1,937 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Prod Calculation — Final Production Rate</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --navy: #0F1B33;
+    --navy-2: #182A4D;
+    --navy-3: #24396B;
+    --cream: #F6F1E4;
+    --cream-2: #EDE6D3;
+    --gold: #C6A15B;
+    --gold-deep: #9C7A34;
+    --ink: #1B1E27;
+    --ink-soft: #5B5F6B;
+    --line: #DED4B9;
+    --good: #5E7F5A;
+    --warn: #B08328;
+    --bad: #A9463A;
+    --r-display: 'Fraunces', serif;
+    --r-body: 'IBM Plex Sans', sans-serif;
+    --r-mono: 'IBM Plex Mono', monospace;
+  }
+  *{ box-sizing: border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    background: var(--cream);
+    color: var(--ink);
+    font-family: var(--r-body);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  ::selection{ background: var(--gold); color: var(--navy); }
+
+  a{ color: var(--navy-3); }
+
+  .wrap{
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 48px 28px 96px;
+  }
+
+  /* ---------- Header ---------- */
+  header.top{
+    display:flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 24px;
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 28px;
+    margin-bottom: 40px;
+    flex-wrap: wrap;
+  }
+  .eyebrow{
+    font-family: var(--r-mono);
+    font-size: 12px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--gold-deep);
+    margin: 0 0 10px;
+  }
+  h1{
+    font-family: var(--r-display);
+    font-weight: 600;
+    font-size: 42px;
+    line-height: 1.05;
+    margin: 0;
+    color: var(--navy);
+    letter-spacing: -0.01em;
+  }
+  h1 em{
+    font-style: italic;
+    font-weight: 500;
+    color: var(--gold-deep);
+  }
+  .top-sub{
+    max-width: 360px;
+    font-size: 14px;
+    color: var(--ink-soft);
+    text-align: right;
+  }
+
+  /* ---------- Section shells ---------- */
+  section.block{ margin-bottom: 44px; }
+  .block-head{
+    display:flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+  .block-title{
+    font-family: var(--r-display);
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--navy);
+    margin:0;
+  }
+  .block-num{
+    font-family: var(--r-mono);
+    color: var(--gold-deep);
+    font-size: 13px;
+    margin-right: 8px;
+  }
+  .block-note{ font-size: 13px; color: var(--ink-soft); }
+
+  /* ---------- Upload ---------- */
+  .upload-card{
+    background: white;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 28px;
+    display:flex;
+    align-items:center;
+    justify-content: space-between;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+  .upload-left{ display:flex; align-items:center; gap:18px; }
+  .upload-icon{
+    width: 44px; height: 44px;
+    border-radius: 3px;
+    background: var(--navy);
+    color: var(--gold);
+    display:flex; align-items:center; justify-content:center;
+    font-family: var(--r-display);
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+  .upload-text b{ display:block; font-size: 15px; color: var(--navy); margin-bottom: 2px;}
+  .upload-text span{ font-size: 13px; color: var(--ink-soft); }
+  .file-btn{
+    position: relative;
+    overflow: hidden;
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    background: var(--navy);
+    color: var(--cream);
+    border: none;
+    padding: 11px 20px;
+    border-radius: 3px;
+    font-family: var(--r-body);
+    font-weight: 600;
+    font-size: 13px;
+    letter-spacing: .01em;
+    cursor: pointer;
+    transition: background .15s ease;
+    white-space: nowrap;
+  }
+  .file-btn:hover{ background: var(--navy-3); }
+  .file-btn input[type=file]{
+    position:absolute; inset:0; opacity:0; cursor:pointer;
+  }
+  .file-status{
+    font-family: var(--r-mono);
+    font-size: 12.5px;
+    color: var(--good);
+    margin-top: 8px;
+  }
+  .file-status.err{ color: var(--bad); }
+
+  /* ---------- Warnings ---------- */
+  .warn-box{
+    margin-top: 16px;
+    border: 1px solid #E4C77E;
+    background: #FBF3DD;
+    border-radius: 4px;
+    padding: 16px 18px;
+    font-size: 13px;
+    color: #6B5219;
+  }
+  .warn-box b{ display:block; margin-bottom:6px; font-size:13px; color:#6B5219;}
+  .warn-box ul{ margin: 4px 0 0; padding-left: 18px; }
+  .warn-box li{ margin-bottom: 3px; }
+
+  /* ---------- Reference config ---------- */
+  .ref-table-scroll{ overflow-x:auto; border:1px solid var(--line); border-radius:4px; background:white;}
+  table.ref{
+    width:100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    min-width: 760px;
+  }
+  table.ref th{
+    text-align:left;
+    font-family: var(--r-mono);
+    font-weight:500;
+    font-size: 11px;
+    letter-spacing:.06em;
+    text-transform: uppercase;
+    color: var(--cream);
+    background: var(--navy);
+    padding: 10px 12px;
+    position: sticky; top:0;
+  }
+  table.ref td{
+    padding: 7px 12px;
+    border-bottom: 1px solid var(--line);
+    font-family: var(--r-mono);
+    color: var(--ink);
+  }
+  table.ref tr:last-child td{ border-bottom:none; }
+  table.ref tr:nth-child(even) td{ background: #FBF9F2; }
+  table.ref td.skillname{ font-family: var(--r-body); font-weight:600; color: var(--navy); }
+  table.ref input{
+    width: 78px;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    padding: 5px 7px;
+    font-family: var(--r-mono);
+    font-size: 12.5px;
+    background: #fff;
+    color: var(--ink);
+  }
+  table.ref input:focus{ outline: 2px solid var(--gold); outline-offset: 0; border-color: var(--gold-deep); }
+  table.ref input.missing{ border-color: var(--bad); background: #FCEEEC; }
+  .badge-configured{
+    display:inline-block;
+    font-family: var(--r-mono);
+    font-size: 10.5px;
+    padding: 2px 7px;
+    border-radius: 20px;
+    background: #E4EEE1;
+    color: var(--good);
+  }
+  .badge-missing{
+    display:inline-block;
+    font-family: var(--r-mono);
+    font-size: 10.5px;
+    padding: 2px 7px;
+    border-radius: 20px;
+    background: #F6E0DC;
+    color: var(--bad);
+  }
+
+  /* ---------- Employees ---------- */
+  .emp-toolbar{
+    display:flex; gap:12px; align-items:center; margin-bottom: 14px; flex-wrap:wrap;
+  }
+  .search-input{
+    flex:1; min-width: 220px;
+    padding: 10px 14px;
+    border:1px solid var(--line);
+    border-radius: 3px;
+    font-family: var(--r-body);
+    font-size: 13.5px;
+    background: white;
+  }
+  .sort-select{
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    background: white;
+    font-family: var(--r-body);
+    font-size: 13px;
+    color: var(--ink);
+  }
+  .emp-count{ font-family: var(--r-mono); font-size: 12px; color: var(--ink-soft); }
+
+  .emp-list{ display:flex; flex-direction:column; gap: 10px; }
+  .emp-card{
+    background: white;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .emp-row{
+    display:flex;
+    align-items:center;
+    gap: 18px;
+    padding: 16px 20px;
+    cursor: pointer;
+    user-select:none;
+  }
+  .emp-row:hover{ background: #FBF9F2; }
+  .emp-name{
+    font-family: var(--r-display);
+    font-weight:600;
+    font-size: 16.5px;
+    color: var(--navy);
+    min-width: 200px;
+  }
+  .emp-skills{
+    display:flex; flex-wrap:wrap; gap:6px; flex:1;
+  }
+  .skill-chip{
+    font-family: var(--r-mono);
+    font-size: 10.5px;
+    padding: 3px 8px;
+    border-radius: 20px;
+    border: 1px solid var(--line);
+    color: var(--ink-soft);
+    white-space: nowrap;
+  }
+  .skill-chip.miss{ border-color: var(--bad); color: var(--bad); background:#FCEEEC; }
+
+  .fpr-wrap{ display:flex; align-items:center; gap:12px; }
+  .fpr-num{
+    font-family: var(--r-mono);
+    font-weight: 600;
+    font-size: 20px;
+    min-width: 58px;
+    text-align:right;
+  }
+  .fpr-num.b5{ color: var(--good); }
+  .fpr-num.b4{ color: #6E8B54; }
+  .fpr-num.b3{ color: var(--gold-deep); }
+  .fpr-num.b2{ color: var(--warn); }
+  .fpr-num.b1{ color: var(--bad); }
+
+  .gauge{ width: 120px; }
+  .gauge svg{ display:block; width:100%; height:auto; }
+  .chev{
+    font-family: var(--r-mono);
+    color: var(--ink-soft);
+    font-size: 14px;
+    transition: transform .15s ease;
+  }
+  .emp-card.open .chev{ transform: rotate(90deg); }
+
+  .emp-detail{
+    display:none;
+    border-top: 1px solid var(--line);
+    padding: 18px 20px 22px;
+    background: #FBFAF4;
+  }
+  .emp-card.open .emp-detail{ display:block; }
+
+  table.detail{
+    width:100%;
+    border-collapse: collapse;
+    font-size: 12.5px;
+    margin-bottom: 12px;
+  }
+  table.detail th{
+    text-align:left;
+    font-family: var(--r-mono);
+    font-size: 10.5px;
+    letter-spacing:.05em;
+    text-transform:uppercase;
+    color: var(--ink-soft);
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--line);
+  }
+  table.detail td{
+    padding: 8px 10px;
+    border-bottom: 1px solid #EDE7D5;
+    font-family: var(--r-mono);
+    color: var(--ink);
+  }
+  table.detail td.skillname{ font-family: var(--r-body); font-weight:600; color: var(--navy); }
+  table.detail tr.miss td{ color: var(--bad); }
+
+  .final-line{
+    display:flex; align-items:center; justify-content: space-between;
+    padding-top: 10px;
+    border-top: 1px dashed var(--line);
+  }
+  .final-line b{
+    font-family: var(--r-display);
+    font-size: 15px;
+    color: var(--navy);
+  }
+
+  .empty-state{
+    text-align:center;
+    padding: 60px 20px;
+    color: var(--ink-soft);
+    font-size: 14px;
+    border: 1px dashed var(--line);
+    border-radius: 4px;
+    background: white;
+  }
+  .empty-state b{ display:block; font-family: var(--r-display); font-size:18px; color: var(--navy); margin-bottom:6px; font-weight:600;}
+
+  footer{
+    margin-top: 60px;
+    padding-top: 20px;
+    border-top: 1px solid var(--line);
+    font-size: 12px;
+    color: var(--ink-soft);
+    font-family: var(--r-mono);
+  }
+
+  @media (max-width: 640px){
+    h1{ font-size: 30px; }
+    .top-sub{ text-align:left; max-width:none; }
+    .emp-row{ flex-wrap:wrap; }
+    .emp-name{ min-width: 0; width:100%; }
+    .gauge{ display:none; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div>
+      <p class="eyebrow">Cluster Leounatics · Pharmacy PA Operations</p>
+      <h1>Prod <em>Calculation</em></h1>
+    </div>
+    <p class="top-sub">Upload the skill-tab workbook, confirm the rating thresholds, and every employee's Final Production Rate is computed and ranked automatically.</p>
+  </header>
+
+  <section class="block">
+    <div class="block-head">
+      <h2 class="block-title"><span class="block-num">01</span>Upload workbook</h2>
+      <span class="block-note">.xlsx / .xls — one tab per skill</span>
+    </div>
+    <div class="upload-card">
+      <div class="upload-left">
+        <div class="upload-icon">Σ</div>
+        <div class="upload-text">
+          <b>Skill performance workbook</b>
+          <span>Each tab = a skill (Name, AHT/Case Rate, ProdHrs). Add a "Quality" tab (Name, Skill, Audits, &lt;100, Markdown) for DPU/DPO.</span>
+        </div>
+      </div>
+      <div>
+        <button class="file-btn" type="button">
+          Choose file
+          <input type="file" id="fileInput" accept=".xlsx,.xls" />
+        </button>
+        <div id="fileStatus" class="file-status"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="block-head">
+      <h2 class="block-title"><span class="block-num">02</span>Reference thresholds &amp; targets</h2>
+      <span class="block-note">Editable — recalculates instantly</span>
+    </div>
+    <div class="ref-table-scroll">
+      <table class="ref" id="refTable">
+        <thead>
+          <tr>
+            <th>Skill</th>
+            <th>Target</th>
+            <th>Attributes</th>
+            <th>Rating 5</th>
+            <th>Rating 4</th>
+            <th>Rating 3</th>
+            <th>Rating 2</th>
+            <th>Rating 1</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="refTableBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="block-head">
+      <h2 class="block-title"><span class="block-num">03</span>Employees</h2>
+      <span class="emp-count" id="empCount"></span>
+    </div>
+    <div class="emp-toolbar">
+      <input class="search-input" id="searchInput" type="text" placeholder="Search employee name…" />
+      <select class="sort-select" id="sortSelect">
+        <option value="rate-desc">Final Prod Rate — high to low</option>
+        <option value="rate-asc">Final Prod Rate — low to high</option>
+        <option value="name-asc">Name — A to Z</option>
+      </select>
+    </div>
+    <div id="empList"></div>
+  </section>
+
+  <footer>Prod_calculation · client-side only — nothing you upload leaves this browser.</footer>
+</div>
+
+<script>
+/* ---------------------------------------------------------------
+   REFERENCE DATA — thresholds are ratio decimals (100% = 1.00)
+--------------------------------------------------------------- */
+const DEFAULT_REFERENCE = {
+  "OCN":                       { target: 12,   attr: 23,   r5: 1.5385, r4: 1.2222, r3: 1.00, r2: 0.6667, r1: 0 },
+  "Outreach":                  { target: 9.5,  attr: 23,   r5: 1.50,   r4: 1.2317, r3: 1.00, r2: 0.7779, r1: 0 },
+  "B vs D":                    { target: null, attr: null, r5: 1.45,   r4: 1.2601, r3: 1.00, r2: 0.75,   r1: 0 },
+  "EDITS":                     { target: 8,    attr: 23,   r5: 1.6663, r4: 1.4326, r3: 1.00, r2: 0.6838, r1: 0 },
+  "C&S Pharma Admin":          { target: null, attr: null, r5: 1.5862, r4: 1.30,   r3: 1.00, r2: 0.7138, r1: 0 },
+  "C&S Appeals Verification":  { target: null, attr: null, r5: 1.4178, r4: 1.2356, r3: 1.00, r2: 0.7733, r1: 0 },
+  "AV Commercial":             { target: null, attr: null, r5: 1.4178, r4: 1.2356, r3: 1.00, r2: 0.7733, r1: 0 },
+  "Clinical Appeals":          { target: null, attr: null, r5: 1.5094, r4: 1.3113, r3: 1.00, r2: 0.8622, r1: 0 },
+  "A&M - Cancellation WB":     { target: null, attr: null, r5: 2.60,   r4: 1.9990, r3: 1.00, r2: 0.80,   r1: 0 },
+  "A&M - Cancellation SP":     { target: null, attr: null, r5: 1.6667, r4: 1.4158, r3: 1.00, r2: 0.75,   r1: 0 },
+  "Outreach Denial":           { target: null, attr: null, r5: 1.38,   r4: 1.19,   r3: 1.00, r2: 0.75,   r1: 0 },
+  "OBD Phone":                 { target: null, attr: null, r5: 1.3587, r4: 1.1921, r3: 1.00, r2: 0.9239, r1: 0 },
+  "PartD_Phones":              { target: 500,  attr: 23,   r5: 1.1788, r4: 1.0892, r3: 1.00, r2: 0.85,   r1: 0 },
+  "Gen_Phones":                { target: 515,  attr: 23,   r5: 1.2675, r4: 1.0775, r3: 1.00, r2: 0.9349, r1: 0 },
+  "Fax":                       { target: 11,   attr: 23,   r5: 1.2727, r4: 1.1682, r3: 1.00, r2: 0.8955, r1: 0 },
+  "GLP_1":                     { target: 15,   attr: 23,   r5: 1.2733, r4: 1.1680, r3: 1.00, r2: 0.8950, r1: 0 },
+  "UHC_west":                  { target: 485,  attr: 23,   r5: 1.1788, r4: 1.0891, r3: 1.00, r2: 0.8549, r1: 0 },
+  "Clinical Appeals Phone":    { target: null, attr: null, r5: 1.1788, r4: 1.0891, r3: 1.00, r2: 0.8549, r1: 0 },
+  "Misroutes":                 { target: null, attr: null, r5: 1.2741, r4: 1.1675, r3: 1.00, r2: 0.8934, r1: 0 }
+};
+
+let reference = {};      // live editable copy: { skillName: {target,attr,r5,r4,r3,r2,r1} }
+let sheetsData = {};     // { skillName: [ {name, actual, hours} ] }
+let employees = {};      // { name: { skills: { skillName: {actual,hours} } } }
+let qualityData = {};    // { employeeName: { skillName: { audits, under100, markdown } } }
+
+function normalizeKey(s){
+  return String(s || "").trim().toLowerCase().replace(/\s+/g,' ');
+}
+
+function findRefKey(tabName){
+  const norm = normalizeKey(tabName);
+  for (const k of Object.keys(reference)){
+    if (normalizeKey(k) === norm) return k;
+  }
+  return null;
+}
+
+/* ---------------------------------------------------------------
+   FILE UPLOAD + PARSE
+--------------------------------------------------------------- */
+document.getElementById('fileInput').addEventListener('change', function(e){
+  const file = e.target.files[0];
+  if (!file) return;
+  const statusEl = document.getElementById('fileStatus');
+  statusEl.textContent = 'Reading ' + file.name + '…';
+  statusEl.className = 'file-status';
+
+  const reader = new FileReader();
+  reader.onload = function(ev){
+    try{
+      const data = new Uint8Array(ev.target.result);
+      const wb = XLSX.read(data, { type: 'array' });
+      parseWorkbook(wb);
+      statusEl.textContent = '✓ Loaded ' + file.name + ' — ' + wb.SheetNames.length + ' skill tab(s), ' + Object.keys(employees).length + ' employee(s)';
+      statusEl.className = 'file-status';
+    }catch(err){
+      console.error(err);
+      statusEl.textContent = 'Could not read that file — ' + err.message;
+      statusEl.className = 'file-status err';
+    }
+  };
+  reader.readAsArrayBuffer(file);
+});
+
+function headerIndex(headers, keywords, excludeKeywords){
+  excludeKeywords = excludeKeywords || [];
+  for (let i=0;i<headers.length;i++){
+    const h = normalizeKey(headers[i]);
+    if (!h) continue;
+    if (excludeKeywords.some(x => h.includes(x))) continue;
+    if (keywords.some(k => h.includes(k))) return i;
+  }
+  return -1;
+}
+
+function parseWorkbook(wb){
+  sheetsData = {};
+  employees = {};
+  qualityData = {};
+
+  wb.SheetNames.forEach(tabName => {
+    const sheet = wb.Sheets[tabName];
+    const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+    if (!rows.length) return;
+
+    const headers = rows[0];
+
+    if (normalizeKey(tabName) === 'quality'){
+      parseQualityTab(headers, rows);
+      return;
+    }
+
+    const nameIdx   = headerIndex(headers, ['name','employee'], ['skill']);
+    const actualIdx = headerIndex(headers, ['aht','case rate','actual']);
+    const hoursIdx  = headerIndex(headers, ['hour','hrs']);
+
+    if (nameIdx === -1) return; // no usable name column on this tab
+
+    const skillName = String(tabName).trim();
+    if (!reference[skillName]){
+      const known = DEFAULT_REFERENCE[findObjKeyCaseInsensitive(DEFAULT_REFERENCE, skillName)];
+      reference[skillName] = known ? Object.assign({}, known) : { target: null, attr: null, r5:null, r4:null, r3:1.00, r2:null, r1:0 };
+    }
+
+    const list = [];
+    for (let r=1; r<rows.length; r++){
+      const row = rows[r];
+      if (!row || row.length === 0) continue;
+      const nameVal = row[nameIdx];
+      if (!nameVal || String(nameVal).trim() === '') continue;
+      const actualVal = actualIdx !== -1 ? parseFloat(row[actualIdx]) : NaN;
+      const hoursVal = hoursIdx !== -1 ? parseFloat(row[hoursIdx]) : NaN;
+
+      const empName = String(nameVal).trim();
+      list.push({ name: empName, actual: isNaN(actualVal) ? null : actualVal, hours: isNaN(hoursVal) ? null : hoursVal });
+
+      if (!employees[empName]) employees[empName] = { skills: {} };
+      employees[empName].skills[skillName] = {
+        actual: isNaN(actualVal) ? null : actualVal,
+        hours: isNaN(hoursVal) ? null : hoursVal
+      };
+    }
+    sheetsData[skillName] = list;
+  });
+
+  renderReferenceTable();
+  renderEmployees();
+}
+
+function parseQualityTab(headers, rows){
+  const nameIdx     = headerIndex(headers, ['name','employee'], ['skill']);
+  const skillIdx     = headerIndex(headers, ['skill']);
+  const auditsIdx    = headerIndex(headers, ['audit']);
+  const under100Idx  = headerIndex(headers, ['<100','under 100','below 100','under100','below100']);
+  const markdownIdx  = headerIndex(headers, ['markdown']);
+
+  if (nameIdx === -1 || skillIdx === -1) return; // can't map rows to a skill without both
+
+  for (let r=1; r<rows.length; r++){
+    const row = rows[r];
+    if (!row || row.length === 0) continue;
+    const nameVal = row[nameIdx];
+    const skillVal = row[skillIdx];
+    if (!nameVal || String(nameVal).trim() === '' || !skillVal || String(skillVal).trim() === '') continue;
+
+    const empName = String(nameVal).trim();
+    const skillName = String(skillVal).trim();
+    const audits = auditsIdx !== -1 ? parseFloat(row[auditsIdx]) : NaN;
+    const under100 = under100Idx !== -1 ? parseFloat(row[under100Idx]) : NaN;
+    const markdown = markdownIdx !== -1 ? parseFloat(row[markdownIdx]) : NaN;
+
+    if (!qualityData[empName]) qualityData[empName] = {};
+    qualityData[empName][skillName] = {
+      audits: isNaN(audits) ? null : audits,
+      under100: isNaN(under100) ? null : under100,
+      markdown: isNaN(markdown) ? null : markdown
+    };
+  }
+}
+
+function findObjKeyCaseInsensitive(obj, key){
+  const norm = normalizeKey(key);
+  return Object.keys(obj).find(k => normalizeKey(k) === norm);
+}
+
+/* Seed reference with the known default skills up front so the config
+   table isn't empty before a file is uploaded. */
+function seedDefaults(){
+  reference = {};
+  Object.keys(DEFAULT_REFERENCE).forEach(k => reference[k] = Object.assign({}, DEFAULT_REFERENCE[k]));
+}
+
+/* ---------------------------------------------------------------
+   CALCULATION
+--------------------------------------------------------------- */
+function computeSkillRating(ratio, ref){
+  const points = [
+    [ref.r1, 1], [ref.r2, 2], [ref.r3, 3], [ref.r4, 4], [ref.r5, 5]
+  ].filter(p => p[0] !== null && p[0] !== undefined && !isNaN(p[0]));
+
+  points.sort((a,b) => a[0]-b[0]);
+  if (points.length < 2) return null;
+
+  if (ratio <= points[0][0]){
+    return { rating: points[0][1], fractional: 0, lowerT: points[0][0], upperT: points[Math.min(1,points.length-1)][0], lowerRating: points[0][1], upperRating: points[Math.min(1,points.length-1)][1] };
+  }
+  if (ratio >= points[points.length-1][0]){
+    const last = points.length-1;
+    return { rating: points[last][1], fractional: 1, lowerT: points[last-1][0], upperT: points[last][0], lowerRating: points[last-1][1], upperRating: points[last][1] };
+  }
+  for (let i=0;i<points.length-1;i++){
+    if (ratio >= points[i][0] && ratio <= points[i+1][0]){
+      const span = points[i+1][0] - points[i][0];
+      let frac = span === 0 ? 0 : (ratio - points[i][0]) / span;
+      frac = Math.max(0, Math.min(1, frac));
+      const rating = points[i][1] + frac * (points[i+1][1] - points[i][1]);
+      return { rating, fractional: frac, lowerT: points[i][0], upperT: points[i+1][0], lowerRating: points[i][1], upperRating: points[i+1][1] };
+    }
+  }
+  return null;
+}
+
+function computeEmployee(empName){
+  const emp = employees[empName];
+  const skillNames = Object.keys(emp.skills);
+  const totalHours = skillNames.reduce((sum, s) => {
+    const h = emp.skills[s].hours;
+    return sum + (h && h > 0 ? h : 0);
+  }, 0);
+
+  const rows = skillNames.map(skillName => {
+    const rowData = emp.skills[skillName];
+    const ref = reference[skillName] || {};
+    const missingRef = ref.target === null || ref.target === undefined || ref.r3 === null || ref.r3 === undefined
+      || ref.r5 === null || ref.r5 === undefined || ref.r2 === null || ref.r2 === undefined;
+    const missingActual = rowData.actual === null || rowData.actual === undefined;
+    const missingHours = rowData.hours === null || rowData.hours === undefined || rowData.hours <= 0;
+
+    let ratio = null, ratingInfo = null, weight = 0;
+    if (!missingRef && !missingActual && ref.target > 0){
+      ratio = rowData.actual / ref.target;
+      ratingInfo = computeSkillRating(ratio, ref);
+    }
+    if (!missingHours && totalHours > 0){
+      weight = rowData.hours / totalHours;
+    }
+
+    const q = (qualityData[empName] && qualityData[empName][skillName]) || null;
+    let dpu = null, dpo = null;
+    if (q && q.audits !== null && q.audits > 0 && q.under100 !== null){
+      dpu = (q.audits - q.under100) / q.audits;
+    }
+    if (q && q.markdown !== null && ref.attr !== null && ref.attr !== undefined && ref.attr > 0){
+      dpo = (ref.attr - q.markdown) / ref.attr;
+    }
+
+    return {
+      skillName, actual: rowData.actual, hours: rowData.hours, target: ref.target,
+      ratio, ratingInfo, weight, dpu, dpo,
+      weightedScore: ratingInfo ? ratingInfo.rating * weight : 0,
+      missing: missingRef || missingActual || missingHours
+    };
+  });
+
+  const finalRate = rows.reduce((sum, r) => sum + (isFinite(r.weightedScore) ? r.weightedScore : 0), 0);
+  return { rows, finalRate, totalHours };
+}
+
+/* ---------------------------------------------------------------
+   RENDER — reference table
+--------------------------------------------------------------- */
+function renderReferenceTable(){
+  const body = document.getElementById('refTableBody');
+  const allSkillNames = Object.keys(reference).sort((a,b)=>a.localeCompare(b));
+  const skillNames = allSkillNames.filter(skillName => {
+    const ref = reference[skillName];
+    return ref.target !== null && ref.target !== undefined
+      && ref.r3 !== null && ref.r5 !== null && ref.r2 !== null;
+  });
+  body.innerHTML = '';
+
+  if (allSkillNames.length === 0){
+    body.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--ink-soft);padding:20px;font-family:var(--r-body);">Upload a workbook, or thresholds will populate once tabs are read.</td></tr>';
+    return;
+  }
+
+  if (skillNames.length === 0){
+    body.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--ink-soft);padding:20px;font-family:var(--r-body);">No configured skills yet.</td></tr>';
+    return;
+  }
+
+  skillNames.forEach(skillName => {
+    const ref = reference[skillName];
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="skillname">${escapeHtml(skillName)}</td>
+      ${fieldInput(skillName,'target',ref.target)}
+      ${fieldInput(skillName,'attr',ref.attr)}
+      ${fieldInput(skillName,'r5',ref.r5)}
+      ${fieldInput(skillName,'r4',ref.r4)}
+      ${fieldInput(skillName,'r3',ref.r3)}
+      ${fieldInput(skillName,'r2',ref.r2)}
+      ${fieldInput(skillName,'r1',ref.r1)}
+      <td><span class="badge-configured">configured</span></td>
+    `;
+    body.appendChild(tr);
+  });
+
+  body.querySelectorAll('input[data-skill]').forEach(input => {
+    input.addEventListener('input', onRefFieldChange);
+  });
+
+}
+
+function fieldInput(skillName, field, value){
+  const isPct = field.startsWith('r');
+  const displayVal = value === null || value === undefined ? '' : (isPct ? (value*100).toFixed(2) : value);
+  const missingCls = (value === null || value === undefined) ? 'missing' : '';
+  return `<td><input class="${missingCls}" type="number" step="any" data-skill="${escapeAttr(skillName)}" data-field="${field}" value="${displayVal}" placeholder="${isPct ? '%' : '#'}" /></td>`;
+}
+
+function onRefFieldChange(e){
+  const skill = e.target.getAttribute('data-skill');
+  const field = e.target.getAttribute('data-field');
+  const raw = e.target.value;
+  if (raw === ''){
+    reference[skill][field] = (field === 'r1') ? 0 : null;
+  } else {
+    const num = parseFloat(raw);
+    reference[skill][field] = field.startsWith('r') ? num/100 : num;
+  }
+  e.target.classList.toggle('missing', reference[skill][field] === null || reference[skill][field] === undefined);
+  renderReferenceTable();
+  renderEmployees();
+}
+
+
+/* ---------------------------------------------------------------
+   RENDER — employees
+--------------------------------------------------------------- */
+function bandClass(rating){
+  if (rating >= 4.5) return 'b5';
+  if (rating >= 3.5) return 'b4';
+  if (rating >= 2.5) return 'b3';
+  if (rating >= 1.5) return 'b2';
+  return 'b1';
+}
+
+function gaugeSvg(rating){
+  const w = 110, h = 22;
+  const x = 6 + ((Math.max(1,Math.min(5,rating)) - 1) / 4) * (w-12);
+  const colors = ['#A9463A','#B08328','#C6A15B','#6E8B54','#5E7F5A'];
+  const bandColor = colors[Math.min(4,Math.max(0,Math.round(rating)-1))];
+  let ticks = '';
+  for (let i=1;i<=5;i++){
+    const tx = 6 + ((i-1)/4)*(w-12);
+    ticks += `<line x1="${tx}" y1="${h/2-5}" x2="${tx}" y2="${h/2+5}" stroke="#DED4B9" stroke-width="1"/>`;
+  }
+  return `<svg viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg">
+    <line x1="6" y1="${h/2}" x2="${w-6}" y2="${h/2}" stroke="#DED4B9" stroke-width="2"/>
+    ${ticks}
+    <circle cx="${x}" cy="${h/2}" r="5.5" fill="${bandColor}" stroke="#fff" stroke-width="1.5"/>
+  </svg>`;
+}
+
+function renderEmployees(){
+  const listEl = document.getElementById('empList');
+  const countEl = document.getElementById('empCount');
+  const searchTerm = normalizeKey(document.getElementById('searchInput').value);
+  const sortMode = document.getElementById('sortSelect').value;
+
+  let names = Object.keys(employees);
+  if (names.length === 0){
+    listEl.innerHTML = `<div class="empty-state"><b>No employees yet</b>Upload the skill-tab workbook above to populate this list.</div>`;
+    countEl.textContent = '';
+    return;
+  }
+
+  const computed = names.map(n => ({ name: n, result: computeEmployee(n) }));
+  let filtered = computed.filter(c => normalizeKey(c.name).includes(searchTerm));
+
+  filtered.sort((a,b) => {
+    if (sortMode === 'rate-desc') return b.result.finalRate - a.result.finalRate;
+    if (sortMode === 'rate-asc') return a.result.finalRate - b.result.finalRate;
+    return a.name.localeCompare(b.name);
+  });
+
+  countEl.textContent = filtered.length + ' of ' + names.length + ' employee' + (names.length===1?'':'s');
+
+  listEl.innerHTML = '';
+  filtered.forEach(({name, result}) => {
+    const card = document.createElement('div');
+    card.className = 'emp-card';
+
+    const skillChips = result.rows.map(r =>
+      `<span class="skill-chip ${r.missing ? 'miss' : ''}">${escapeHtml(r.skillName)}${r.ratingInfo ? ' · ' + r.ratingInfo.rating.toFixed(2) : ''}</span>`
+    ).join('');
+
+    const detailRows = result.rows.map(r => {
+      const ratio = r.ratio !== null ? r.ratio.toFixed(4) : '—';
+      const rating = r.ratingInfo ? r.ratingInfo.rating.toFixed(3) : '—';
+      const frac = r.ratingInfo ? r.ratingInfo.fractional.toFixed(3) : '—';
+      const minT = r.ratingInfo ? r.ratingInfo.lowerT.toFixed(4) : '—';
+      const maxT = r.ratingInfo ? r.ratingInfo.upperT.toFixed(4) : '—';
+      const weight = (r.weight*100).toFixed(1) + '%';
+      const wscore = r.ratingInfo ? r.weightedScore.toFixed(3) : '—';
+      const dpu = r.dpu !== null ? (r.dpu*100).toFixed(2) + '%' : '—';
+      const dpo = r.dpo !== null ? (r.dpo*100).toFixed(2) + '%' : '—';
+      return `<tr class="${r.missing ? 'miss' : ''}">
+        <td class="skillname">${escapeHtml(r.skillName)}</td>
+        <td>${r.actual ?? '—'}</td>
+        <td>${r.target ?? '—'}</td>
+        <td>${ratio}</td>
+        <td>${minT}</td>
+        <td>${maxT}</td>
+        <td>${frac}</td>
+        <td>${rating}</td>
+        <td>${weight}</td>
+        <td>${wscore}</td>
+        <td>${dpu}</td>
+        <td>${dpo}</td>
+      </tr>`;
+    }).join('');
+
+    card.innerHTML = `
+      <div class="emp-row" data-toggle>
+        <span class="chev">▸</span>
+        <div class="emp-name">${escapeHtml(name)}</div>
+        <div class="emp-skills">${skillChips}</div>
+        <div class="fpr-wrap">
+          <div class="gauge">${gaugeSvg(result.finalRate || 1)}</div>
+          <div class="fpr-num ${bandClass(result.finalRate)}">${result.finalRate ? result.finalRate.toFixed(2) : '—'}</div>
+        </div>
+      </div>
+      <div class="emp-detail">
+        <table class="detail">
+          <thead>
+            <tr>
+              <th>Skill</th><th>Actual</th><th>Target</th><th>Ratio</th>
+              <th>Min Thr</th><th>Max Thr</th><th>Frac.</th><th>Rating</th>
+              <th>Weight</th><th>Weighted</th><th>DPU</th><th>DPO</th>
+            </tr>
+          </thead>
+          <tbody>${detailRows}</tbody>
+        </table>
+        <div class="final-line">
+          <span style="font-family:var(--r-mono);font-size:12px;color:var(--ink-soft);">Total production hours: ${result.totalHours || 0}</span>
+          <b>Final Production Rate: ${result.finalRate ? result.finalRate.toFixed(3) : '—'}</b>
+        </div>
+      </div>
+    `;
+    card.querySelector('[data-toggle]').addEventListener('click', () => {
+      card.classList.toggle('open');
+    });
+    listEl.appendChild(card);
+  });
+}
+
+function escapeHtml(str){
+  return String(str).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+function escapeAttr(str){ return escapeHtml(str); }
+
+document.getElementById('searchInput').addEventListener('input', renderEmployees);
+document.getElementById('sortSelect').addEventListener('change', renderEmployees);
+
+/* init */
+seedDefaults();
+renderReferenceTable();
+renderEmployees();
+</script>
+</body>
+</html>
