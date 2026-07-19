@@ -1,1121 +1,975 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Prod Calculation — Final Production Rate</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<style>
-  :root{
-    --navy: #0F1B33;
-    --navy-2: #182A4D;
-    --navy-3: #24396B;
-    --cream: #F6F1E4;
-    --cream-2: #EDE6D3;
-    --gold: #C6A15B;
-    --gold-deep: #9C7A34;
-    --ink: #1B1E27;
-    --ink-soft: #5B5F6B;
-    --line: #DED4B9;
-    --good: #5E7F5A;
-    --warn: #B08328;
-    --bad: #A9463A;
-    --r-display: 'Fraunces', serif;
-    --r-body: 'IBM Plex Sans', sans-serif;
-    --r-mono: 'IBM Plex Mono', monospace;
-  }
-  *{ box-sizing: border-box; }
-  html,body{ margin:0; padding:0; }
-  body{
-    background: var(--cream);
-    color: var(--ink);
-    font-family: var(--r-body);
-    line-height: 1.5;
-    -webkit-font-smoothing: antialiased;
-  }
-  ::selection{ background: var(--gold); color: var(--navy); }
+import { useCallback, useMemo, useState, startTransition, type ChangeEvent } from "react"
+import { addPropertyControls, ControlType } from "framer"
 
-  a{ color: var(--navy-3); }
+// User request: Create a new Framer code component named "ProdCalculationApp" that recreates a cream-background, navy/gold editorial single-page client-side Prod Calculation tool with workbook upload, parsing/fallback behavior, threshold editing, employee ranking, search/sort, expandable details, and Supervisor PAR.
 
-  .wrap{
-    max-width: 1180px;
-    margin: 0 auto;
-    padding: 48px 28px 96px;
-  }
-
-  /* ---------- Header ---------- */
-  header.top{
-    display:flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 24px;
-    border-bottom: 1px solid var(--line);
-    padding-bottom: 28px;
-    margin-bottom: 40px;
-    flex-wrap: wrap;
-  }
-  .eyebrow{
-    font-family: var(--r-mono);
-    font-size: 12px;
-    letter-spacing: .14em;
-    text-transform: uppercase;
-    color: var(--gold-deep);
-    margin: 0 0 10px;
-  }
-  h1{
-    font-family: var(--r-display);
-    font-weight: 600;
-    font-size: 42px;
-    line-height: 1.05;
-    margin: 0;
-    color: var(--navy);
-    letter-spacing: -0.01em;
-  }
-  h1 em{
-    font-style: italic;
-    font-weight: 500;
-    color: var(--gold-deep);
-  }
-  .top-sub{
-    max-width: 420px;
-    font-size: 14px;
-    color: var(--ink-soft);
-    text-align: left;
-    margin-top: 14px;
-  }
-
-  /* ---------- Section shells ---------- */
-  section.block{ margin-bottom: 44px; }
-  .block-head{
-    display:flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 16px;
-    margin-bottom: 16px;
-    flex-wrap: wrap;
-  }
-  .block-title{
-    font-family: var(--r-display);
-    font-size: 22px;
-    font-weight: 600;
-    color: var(--navy);
-    margin:0;
-  }
-  .block-num{
-    font-family: var(--r-mono);
-    color: var(--gold-deep);
-    font-size: 13px;
-    margin-right: 8px;
-  }
-  .block-note{ font-size: 13px; color: var(--ink-soft); }
-
-  /* ---------- Upload ---------- */
-  .upload-card{
-    background: white;
-    border: 1px solid var(--line);
-    border-radius: 4px;
-    padding: 28px;
-    display:flex;
-    align-items:center;
-    justify-content: space-between;
-    gap: 24px;
-    flex-wrap: wrap;
-  }
-  .upload-left{ display:flex; align-items:center; gap:18px; }
-  .upload-icon{
-    width: 44px; height: 44px;
-    border-radius: 3px;
-    background: var(--navy);
-    color: var(--gold);
-    display:flex; align-items:center; justify-content:center;
-    font-family: var(--r-display);
-    font-size: 20px;
-    flex-shrink: 0;
-  }
-  .upload-text b{ display:block; font-size: 15px; color: var(--navy); margin-bottom: 2px;}
-  .upload-text span{ font-size: 13px; color: var(--ink-soft); }
-  .file-btn{
-    position: relative;
-    overflow: hidden;
-    display:inline-flex;
-    align-items:center;
-    gap:8px;
-    background: var(--navy);
-    color: var(--cream);
-    border: none;
-    padding: 11px 20px;
-    border-radius: 3px;
-    font-family: var(--r-body);
-    font-weight: 600;
-    font-size: 13px;
-    letter-spacing: .01em;
-    cursor: pointer;
-    transition: background .15s ease;
-    white-space: nowrap;
-  }
-  .file-btn:hover{ background: var(--navy-3); }
-  .file-btn input[type=file]{
-    position:absolute; inset:0; opacity:0; cursor:pointer;
-  }
-  .file-status{
-    font-family: var(--r-mono);
-    font-size: 12.5px;
-    color: var(--good);
-    margin-top: 8px;
-  }
-  .file-status.err{ color: var(--bad); }
-
-  /* ---------- Warnings ---------- */
-  .warn-box{
-    margin-top: 16px;
-    border: 1px solid #E4C77E;
-    background: #FBF3DD;
-    border-radius: 4px;
-    padding: 16px 18px;
-    font-size: 13px;
-    color: #6B5219;
-  }
-  .warn-box b{ display:block; margin-bottom:6px; font-size:13px; color:#6B5219;}
-  .warn-box ul{ margin: 4px 0 0; padding-left: 18px; }
-  .warn-box li{ margin-bottom: 3px; }
-
-  /* ---------- Reference config ---------- */
-  .ref-table-scroll{ overflow-x:auto; border:1px solid var(--line); border-radius:4px; background:white;}
-  table.ref{
-    width:100%;
-    border-collapse: collapse;
-    font-size: 13px;
-    min-width: 760px;
-  }
-  table.ref th{
-    text-align:left;
-    font-family: var(--r-mono);
-    font-weight:500;
-    font-size: 11px;
-    letter-spacing:.06em;
-    text-transform: uppercase;
-    color: var(--cream);
-    background: var(--navy);
-    padding: 10px 12px;
-    position: sticky; top:0;
-  }
-  table.ref td{
-    padding: 7px 12px;
-    border-bottom: 1px solid var(--line);
-    font-family: var(--r-mono);
-    color: var(--ink);
-  }
-  table.ref tr:last-child td{ border-bottom:none; }
-  table.ref tr:nth-child(even) td{ background: #FBF9F2; }
-  table.ref td.skillname{ font-family: var(--r-body); font-weight:600; color: var(--navy); }
-  table.ref input{
-    width: 78px;
-    border: 1px solid var(--line);
-    border-radius: 3px;
-    padding: 5px 7px;
-    font-family: var(--r-mono);
-    font-size: 12.5px;
-    background: #fff;
-    color: var(--ink);
-  }
-  table.ref input:focus{ outline: 2px solid var(--gold); outline-offset: 0; border-color: var(--gold-deep); }
-  table.ref input.missing{ border-color: var(--bad); background: #FCEEEC; }
-  .badge-configured{
-    display:inline-block;
-    font-family: var(--r-mono);
-    font-size: 10.5px;
-    padding: 2px 7px;
-    border-radius: 20px;
-    background: #E4EEE1;
-    color: var(--good);
-  }
-  .badge-missing{
-    display:inline-block;
-    font-family: var(--r-mono);
-    font-size: 10.5px;
-    padding: 2px 7px;
-    border-radius: 20px;
-    background: #F6E0DC;
-    color: var(--bad);
-  }
-
-  /* ---------- Employees ---------- */
-  .emp-toolbar{
-    display:flex; gap:12px; align-items:center; margin-bottom: 14px; flex-wrap:wrap;
-  }
-  .search-input{
-    flex:1; min-width: 220px;
-    padding: 10px 14px;
-    border:1px solid var(--line);
-    border-radius: 3px;
-    font-family: var(--r-body);
-    font-size: 13.5px;
-    background: white;
-  }
-  .sort-select{
-    padding: 10px 12px;
-    border: 1px solid var(--line);
-    border-radius: 3px;
-    background: white;
-    font-family: var(--r-body);
-    font-size: 13px;
-    color: var(--ink);
-  }
-  .emp-count{ font-family: var(--r-mono); font-size: 12px; color: var(--ink-soft); }
-
-  .emp-list{ display:flex; flex-direction:column; gap: 10px; }
-  .emp-card{
-    background: white;
-    border: 1px solid var(--line);
-    border-radius: 4px;
-    overflow: hidden;
-  }
-  .emp-row{
-    display:flex;
-    align-items:center;
-    gap: 18px;
-    padding: 16px 20px;
-    cursor: pointer;
-    user-select:none;
-  }
-  .emp-row:hover{ background: #FBF9F2; }
-  .emp-name{
-    font-family: var(--r-display);
-    font-weight:600;
-    font-size: 16.5px;
-    color: var(--navy);
-    min-width: 200px;
-  }
-  .emp-skills{
-    display:flex; flex-wrap:wrap; gap:6px; flex:1;
-  }
-  .skill-chip{
-    font-family: var(--r-mono);
-    font-size: 10.5px;
-    padding: 3px 8px;
-    border-radius: 20px;
-    border: 1px solid var(--line);
-    color: var(--ink-soft);
-    white-space: nowrap;
-  }
-  .skill-chip.miss{ border-color: var(--bad); color: var(--bad); background:#FCEEEC; }
-
-  .fpr-wrap{ display:flex; align-items:center; gap:12px; }
-  .fpr-num{
-    font-family: var(--r-mono);
-    font-weight: 600;
-    font-size: 20px;
-    min-width: 58px;
-    text-align:right;
-  }
-  .fpr-num.b5{ color: var(--good); }
-  .fpr-num.b4{ color: #6E8B54; }
-  .fpr-num.b3{ color: var(--gold-deep); }
-  .fpr-num.b2{ color: var(--warn); }
-  .fpr-num.b1{ color: var(--bad); }
-
-  .gauge{ width: 120px; }
-  .gauge svg{ display:block; width:100%; height:auto; }
-
-  .mini-stat{
-    display:flex; flex-direction:column; align-items:flex-end;
-    min-width: 54px;
-  }
-  .mini-stat .m-label{
-    font-family: var(--r-mono);
-    font-size: 9.5px;
-    letter-spacing: .05em;
-    text-transform: uppercase;
-    color: var(--ink-soft);
-  }
-  .mini-stat .m-val{
-    font-family: var(--r-mono);
-    font-weight: 600;
-    font-size: 14px;
-    color: var(--navy);
-  }
-
-  .pf-badge{
-    font-family: var(--r-mono);
-    font-weight: 600;
-    font-size: 11px;
-    letter-spacing: .04em;
-    text-transform: uppercase;
-    padding: 5px 12px;
-    border-radius: 20px;
-    white-space: nowrap;
-  }
-  .pf-badge.pf-pass{ background: #E4EEE1; color: var(--good); }
-  .pf-badge.pf-fail{ background: #F6E0DC; color: var(--bad); }
-  .chev{
-    font-family: var(--r-mono);
-    color: var(--ink-soft);
-    font-size: 14px;
-    transition: transform .15s ease;
-  }
-  .emp-card.open .chev{ transform: rotate(90deg); }
-
-  .emp-detail{
-    display:none;
-    border-top: 1px solid var(--line);
-    padding: 18px 20px 22px;
-    background: #FBFAF4;
-  }
-  .emp-card.open .emp-detail{ display:block; }
-
-  table.detail{
-    width:100%;
-    border-collapse: collapse;
-    font-size: 12.5px;
-    margin-bottom: 12px;
-  }
-  table.detail th{
-    text-align:left;
-    font-family: var(--r-mono);
-    font-size: 10.5px;
-    letter-spacing:.05em;
-    text-transform:uppercase;
-    color: var(--ink-soft);
-    padding: 6px 10px;
-    border-bottom: 1px solid var(--line);
-  }
-  table.detail td{
-    padding: 8px 10px;
-    border-bottom: 1px solid #EDE7D5;
-    font-family: var(--r-mono);
-    color: var(--ink);
-  }
-  table.detail td.skillname{ font-family: var(--r-body); font-weight:600; color: var(--navy); }
-  table.detail tr.miss td{ color: var(--bad); }
-
-  .final-line{
-    display:flex; align-items:center; justify-content: space-between;
-    padding-top: 10px;
-    border-top: 1px dashed var(--line);
-  }
-  .final-line b{
-    font-family: var(--r-display);
-    font-size: 15px;
-    color: var(--navy);
-  }
-
-  .par-sidebar{
-    width: 280px;
-    flex-shrink: 0;
-  }
-  .par-card{
-    background: white;
-    border: 1px solid var(--line);
-    border-radius: 4px;
-    padding: 18px;
-  }
-  .par-title{
-    font-family: var(--r-display);
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--navy);
-    margin: 0 0 2px;
-  }
-  .par-sub{
-    font-size: 11.5px;
-    color: var(--ink-soft);
-    margin: 0 0 12px;
-  }
-  #parList{
-    max-height: 220px;
-    overflow-y: auto;
-  }
-  .par-row{
-    display:flex;
-    align-items:center;
-    justify-content: space-between;
-    gap: 10px;
-    padding: 9px 0;
-    border-bottom: 1px solid #EDE7D5;
-  }
-  .par-row:last-child{ border-bottom:none; }
-  .par-name{
-    font-family: var(--r-body);
-    font-weight: 600;
-    font-size: 13px;
-    color: var(--navy);
-  }
-  .par-count{
-    font-family: var(--r-mono);
-    font-size: 11px;
-    color: var(--ink-soft);
-    display:block;
-  }
-  .par-pct{
-    font-family: var(--r-mono);
-    font-weight: 600;
-    font-size: 15px;
-    white-space: nowrap;
-  }
-  .par-pct.good{ color: var(--good); }
-  .par-pct.bad{ color: var(--bad); }
-  .par-empty{
-    font-size: 13px;
-    color: var(--ink-soft);
-    padding: 8px 0;
-  }
-
-  @media (max-width: 720px){
-    .par-sidebar{ width: 100%; }
-  }
-
-  .empty-state{
-    text-align:center;
-    padding: 60px 20px;
-    color: var(--ink-soft);
-    font-size: 14px;
-    border: 1px dashed var(--line);
-    border-radius: 4px;
-    background: white;
-  }
-  .empty-state b{ display:block; font-family: var(--r-display); font-size:18px; color: var(--navy); margin-bottom:6px; font-weight:600;}
-
-  footer{
-    margin-top: 60px;
-    padding-top: 20px;
-    border-top: 1px solid var(--line);
-    font-size: 12px;
-    color: var(--ink-soft);
-    font-family: var(--r-mono);
-  }
-
-  @media (max-width: 640px){
-    h1{ font-size: 30px; }
-    .top-sub{ text-align:left; max-width:none; }
-    .emp-row{ flex-wrap:wrap; }
-    .emp-name{ min-width: 0; width:100%; }
-    .gauge{ display:none; }
-  }
-</style>
-</head>
-<body>
-<div class="wrap">
-
-  <header class="top">
-    <div>
-      <p class="eyebrow">Cluster Leounatics · Pharmacy PA Operations</p>
-      <h1>Prod <em>Calculation</em></h1>
-      <p class="top-sub">Upload the skill-tab workbook, confirm the rating thresholds, and every employee's Final Production Rate is computed and ranked automatically.</p>
-    </div>
-    <aside class="par-sidebar">
-      <div class="par-card">
-        <h3 class="par-title">Supervisor PAR</h3>
-        <p class="par-sub">Pass count ÷ headcount</p>
-        <div id="parList"></div>
-      </div>
-    </aside>
-  </header>
-
-  <section class="block">
-    <div class="block-head">
-      <h2 class="block-title"><span class="block-num">01</span>Upload workbook</h2>
-      <span class="block-note">.xlsx / .xls — one tab per skill</span>
-    </div>
-    <div class="upload-card">
-      <div class="upload-left">
-        <div class="upload-icon">Σ</div>
-        <div class="upload-text">
-          <b>Skill performance workbook</b>
-          <span>Each tab = a skill (Employee Name, AHT/Case Rate, ProdHrs). Plus a "Quality" tab (Employee Name, # of Audits, # of Markdown, # of &lt;100) for DPU/DPO.</span>
-        </div>
-      </div>
-      <div>
-        <button class="file-btn" type="button">
-          Choose file
-          <input type="file" id="fileInput" accept=".xlsx,.xls" />
-        </button>
-        <div id="fileStatus" class="file-status"></div>
-      </div>
-    </div>
-  </section>
-
-  <section class="block">
-    <div class="block-head" id="refBlockHead" style="cursor:pointer;">
-      <h2 class="block-title"><span class="block-num">02</span>Reference thresholds &amp; targets <span id="refChevron" style="font-family:var(--r-mono);font-size:14px;color:var(--ink-soft);display:inline-block;transition:transform .15s ease;">▸</span></h2>
-      <span class="block-note">Editable — recalculates instantly</span>
-    </div>
-    <div id="refTableWrap" style="display:none;">
-      <div class="ref-table-scroll">
-        <table class="ref" id="refTable">
-          <thead>
-            <tr>
-              <th>Skill</th>
-              <th>Target</th>
-              <th>Rating 5</th>
-              <th>Rating 4</th>
-              <th>Rating 3</th>
-              <th>Rating 2</th>
-              <th>Rating 1</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody id="refTableBody"></tbody>
-        </table>
-      </div>
-    </div>
-  </section>
-
-  <section class="block">
-    <div class="block-head">
-      <h2 class="block-title"><span class="block-num">03</span>Employees</h2>
-      <span class="emp-count" id="empCount"></span>
-    </div>
-    <div class="emp-toolbar">
-      <input class="search-input" id="searchInput" type="text" placeholder="Search employee name…" />
-      <select class="sort-select" id="sortSelect">
-        <option value="rate-desc">Final Prod Rate — high to low</option>
-        <option value="rate-asc">Final Prod Rate — low to high</option>
-        <option value="name-asc">Name — A to Z</option>
-      </select>
-    </div>
-    <div id="empList"></div>
-  </section>
-
-  <footer>Prod_calculation · client-side only — nothing you upload leaves this browser.</footer>
-</div>
-
-<script>
-/* ---------------------------------------------------------------
-   REFERENCE DATA — thresholds are ratio decimals (100% = 1.00)
---------------------------------------------------------------- */
-const DEFAULT_REFERENCE = {
-  "OCN":                       { target: 12,   r5: 1.5385, r4: 1.2222, r3: 1.00, r2: 0.6667, r1: 0 },
-  "Outreach":                  { target: 9.5,  r5: 1.50,   r4: 1.2317, r3: 1.00, r2: 0.7779, r1: 0 },
-  "B vs D":                    { target: null, r5: 1.45,   r4: 1.2601, r3: 1.00, r2: 0.75,   r1: 0 },
-  "EDITS":                     { target: 8,    r5: 1.6663, r4: 1.4326, r3: 1.00, r2: 0.6838, r1: 0 },
-  "C&S Pharma Admin":          { target: null, r5: 1.5862, r4: 1.30,   r3: 1.00, r2: 0.7138, r1: 0 },
-  "C&S Appeals Verification":  { target: null, r5: 1.4178, r4: 1.2356, r3: 1.00, r2: 0.7733, r1: 0 },
-  "AV Commercial":             { target: null, r5: 1.4178, r4: 1.2356, r3: 1.00, r2: 0.7733, r1: 0 },
-  "Clinical Appeals":          { target: null, r5: 1.5094, r4: 1.3113, r3: 1.00, r2: 0.8622, r1: 0 },
-  "A&M - Cancellation WB":     { target: null, r5: 2.60,   r4: 1.9990, r3: 1.00, r2: 0.80,   r1: 0 },
-  "A&M - Cancellation SP":     { target: null, r5: 1.6667, r4: 1.4158, r3: 1.00, r2: 0.75,   r1: 0 },
-  "Outreach Denial":           { target: null, r5: 1.38,   r4: 1.19,   r3: 1.00, r2: 0.75,   r1: 0 },
-  "OBD Phone":                 { target: null, r5: 1.3587, r4: 1.1921, r3: 1.00, r2: 0.9239, r1: 0 },
-  "PartD_Phones":              { target: 500,  r5: 1.1788, r4: 1.0892, r3: 1.00, r2: 0.85,   r1: 0 },
-  "Gen_Phones":                { target: 515,  r5: 1.2675, r4: 1.0775, r3: 1.00, r2: 0.9349, r1: 0 },
-  "Fax":                       { target: 11,   r5: 1.2727, r4: 1.1682, r3: 1.00, r2: 0.8955, r1: 0 },
-  "GLP_1":                     { target: 15,   r5: 1.2733, r4: 1.1680, r3: 1.00, r2: 0.8950, r1: 0 },
-  "UHC_west":                  { target: 485,  r5: 1.1788, r4: 1.0891, r3: 1.00, r2: 0.8549, r1: 0 },
-  "Clinical Appeals Phone":    { target: null, r5: 1.1788, r4: 1.0891, r3: 1.00, r2: 0.8549, r1: 0 },
-  "Misroutes":                 { target: null, r5: 1.2741, r4: 1.1675, r3: 1.00, r2: 0.8934, r1: 0 }
-};
-
-let reference = {};      // live editable copy: { skillName: {target,attr,r5,r4,r3,r2,r1} }
-let sheetsData = {};     // { skillName: [ {name, actual, hours} ] }
-let employees = {};      // { name: { skills: { skillName: {actual,hours} } } }
-let qualityData = {};    // { employeeName: { audits, under100, markdown, hasData } }
-let attributesPerAudit = 23; // DPO denominator — constant across skills per the reference given
-let supervisorOf = {};   // { employeeName: supervisorName }
-
-function normalizeKey(s){
-  return String(s || "").trim().toLowerCase().replace(/\s+/g,' ');
+interface SkillThreshold {
+    target: number
+    rating5: number
+    rating4: number
+    rating3: number
+    rating2: number
+    rating1: number
 }
 
-function findRefKey(tabName){
-  const norm = normalizeKey(tabName);
-  for (const k of Object.keys(reference)){
-    if (normalizeKey(k) === norm) return k;
-  }
-  return null;
+interface QualityData {
+    audits: number
+    markdown: number
+    under100: number
 }
 
-/* ---------------------------------------------------------------
-   FILE UPLOAD + PARSE
---------------------------------------------------------------- */
-document.getElementById('fileInput').addEventListener('change', function(e){
-  const file = e.target.files[0];
-  if (!file) return;
-  const statusEl = document.getElementById('fileStatus');
-  statusEl.textContent = 'Reading ' + file.name + '…';
-  statusEl.className = 'file-status';
-
-  const reader = new FileReader();
-  reader.onload = function(ev){
-    try{
-      const data = new Uint8Array(ev.target.result);
-      const wb = XLSX.read(data, { type: 'array' });
-      parseWorkbook(wb);
-      statusEl.textContent = '✓ Loaded ' + file.name + ' — ' + wb.SheetNames.length + ' skill tab(s), ' + Object.keys(employees).length + ' employee(s)';
-      statusEl.className = 'file-status';
-    }catch(err){
-      console.error(err);
-      statusEl.textContent = 'Could not read that file — ' + err.message;
-      statusEl.className = 'file-status err';
-    }
-  };
-  reader.readAsArrayBuffer(file);
-});
-
-function headerIndex(headers, keywords, excludeKeywords){
-  excludeKeywords = excludeKeywords || [];
-  for (let i=0;i<headers.length;i++){
-    const h = normalizeKey(headers[i]);
-    if (!h) continue;
-    if (excludeKeywords.some(x => h.includes(x))) continue;
-    if (keywords.some(k => h.includes(k))) return i;
-  }
-  return -1;
+interface SkillValue {
+    metric: number | null
+    prodHrs: number
 }
 
-function parseWorkbook(wb){
-  sheetsData = {};
-  employees = {};
-  qualityData = {};
-  supervisorOf = {};
+interface EmployeeRecord {
+    name: string
+    skills: Record<string, SkillValue>
+    quality?: QualityData
+}
 
-  wb.SheetNames.forEach(tabName => {
-    const sheet = wb.Sheets[tabName];
-    const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
-    if (!rows.length) return;
+interface ComputedEmployee {
+    name: string
+    finalRate: number
+    missingSkills: string[]
+    weightedHours: number
+    ratings: Array<{
+        skill: string
+        metric: number | null
+        prodHrs: number
+        rating: number
+        target: number
+    }>
+    quality?: QualityData
+    notes: string
+}
 
-    const headers = rows[0];
+interface MyComponentProps {
+    creamBackground: string
+    navyColor: string
+    goldColor: string
+    lineColor: string
+    cardBackground: string
+    passThreshold: number
+    headingFont: any
+    bodyFont: any
+}
 
-    if (normalizeKey(tabName) === 'quality'){
-      parseQualityTab(headers, rows);
-      return;
+const XLSX_CDN_URL = "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"
+let xlsxLoaderPromise: Promise<any> | null = null
+
+const demoWorkbookData: EmployeeRecord[] = [
+    {
+        name: "Alex Rivera",
+        skills: {
+            Intake: { metric: 108, prodHrs: 34 },
+            Claims: { metric: 98, prodHrs: 21 },
+        },
+        quality: { audits: 18, markdown: 1, under100: 0 },
+    },
+    {
+        name: "Bianca Cruz",
+        skills: {
+            Intake: { metric: 95, prodHrs: 28 },
+            Appeals: { metric: 103, prodHrs: 25 },
+        },
+        quality: { audits: 15, markdown: 2, under100: 1 },
+    },
+    {
+        name: "Connor Lee",
+        skills: {
+            Claims: { metric: 112, prodHrs: 39 },
+            Appeals: { metric: 99, prodHrs: 18 },
+        },
+        quality: { audits: 20, markdown: 0, under100: 0 },
+    },
+]
+
+const defaultThreshold = (): SkillThreshold => ({
+    target: 100,
+    rating5: 120,
+    rating4: 110,
+    rating3: 100,
+    rating2: 90,
+    rating1: 80,
+})
+
+const parseNumber = (value: unknown): number => {
+    if (typeof value === "number" && Number.isFinite(value)) return value
+    if (typeof value === "string") {
+        const cleaned = value.replace(/[^0-9.-]/g, "")
+        const parsed = Number(cleaned)
+        return Number.isFinite(parsed) ? parsed : 0
     }
+    return 0
+}
 
-    const nameIdx       = headerIndex(headers, ['name','employee'], ['skill']);
-    const actualIdx     = headerIndex(headers, ['aht','case rate','actual']);
-    const hoursIdx      = headerIndex(headers, ['hour','hrs']);
-    const supervisorIdx = headerIndex(headers, ['supervisor']);
+const resolveColumnValue = (row: Record<string, unknown>, patterns: RegExp[]): unknown => {
+    const keys = Object.keys(row)
+    const match = keys.find((key) => patterns.some((pattern) => pattern.test(key)))
+    return match ? row[match] : undefined
+}
 
-    if (nameIdx === -1) return; // no usable name column on this tab
+const getRating = (metric: number | null, threshold: SkillThreshold): number => {
+    if (metric === null) return 0
+    if (metric >= threshold.rating5) return 5
+    if (metric >= threshold.rating4) return 4
+    if (metric >= threshold.rating3) return 3
+    if (metric >= threshold.rating2) return 2
+    return 1
+}
 
-    const skillName = String(tabName).trim();
-    if (!reference[skillName]){
-      const known = DEFAULT_REFERENCE[findObjKeyCaseInsensitive(DEFAULT_REFERENCE, skillName)];
-      reference[skillName] = known ? Object.assign({}, known) : { target: null, attr: null, r5:null, r4:null, r3:1.00, r2:null, r1:0 };
-    }
+/**
+ * @framerSupportedLayoutWidth any-prefer-fixed
+ * @framerSupportedLayoutHeight auto
+ */
+export default function ProdCalculationApp(props: MyComponentProps) {
+    const {
+        creamBackground,
+        navyColor,
+        goldColor,
+        lineColor,
+        cardBackground,
+        passThreshold,
+        headingFont,
+        bodyFont,
+    } = props
+    const [employees, setEmployees] = useState<EmployeeRecord[]>([])
+    const [skills, setSkills] = useState<string[]>([])
+    const [thresholds, setThresholds] = useState<Record<string, SkillThreshold>>({})
+    const [searchQuery, setSearchQuery] = useState("")
+    const [sortOption, setSortOption] = useState("high-to-low")
+    const [expanded, setExpanded] = useState<Record<string, boolean>>({})
+    const [focusedControl, setFocusedControl] = useState("")
+    const [statusMessage, setStatusMessage] = useState(
+        "No workbook uploaded yet. Upload .xlsx or .xls to begin."
+    )
+    const [usingFallback, setUsingFallback] = useState(false)
 
-    const list = [];
-    for (let r=1; r<rows.length; r++){
-      const row = rows[r];
-      if (!row || row.length === 0) continue;
-      const nameVal = row[nameIdx];
-      if (!nameVal || String(nameVal).trim() === '') continue;
-      const actualVal = actualIdx !== -1 ? parseFloat(row[actualIdx]) : NaN;
-      const hoursVal = hoursIdx !== -1 ? parseFloat(row[hoursIdx]) : NaN;
-
-      const empName = String(nameVal).trim();
-      list.push({ name: empName, actual: isNaN(actualVal) ? null : actualVal, hours: isNaN(hoursVal) ? null : hoursVal });
-
-      if (!employees[empName]) employees[empName] = { skills: {} };
-      employees[empName].skills[skillName] = {
-        actual: isNaN(actualVal) ? null : actualVal,
-        hours: isNaN(hoursVal) ? null : hoursVal
-      };
-
-      if (supervisorIdx !== -1){
-        const supervisorVal = row[supervisorIdx];
-        if (supervisorVal && String(supervisorVal).trim() !== ''){
-          supervisorOf[empName] = String(supervisorVal).trim();
+    const loadXLSXRuntime = useCallback(async () => {
+        if (typeof window === "undefined" || typeof document === "undefined") {
+            throw new Error("Browser runtime required")
         }
-      }
-    }
-    sheetsData[skillName] = list;
-  });
 
-  renderReferenceTable();
-  renderEmployees();
-  renderParSidebar();
+        const maybeXLSX = (window as any).XLSX
+        if (maybeXLSX && typeof maybeXLSX.read === "function") return maybeXLSX
+
+        if (!xlsxLoaderPromise) {
+            xlsxLoaderPromise = new Promise((resolve, reject) => {
+                const existingScript = document.querySelector(
+                    `script[data-xlsx-cdn="${XLSX_CDN_URL}"]`
+                ) as HTMLScriptElement | null
+
+                if (existingScript) {
+                    const loadedXLSX = (window as any).XLSX
+                    if (loadedXLSX && typeof loadedXLSX.read === "function") {
+                        resolve(loadedXLSX)
+                        return
+                    }
+                }
+
+                const script = existingScript ?? document.createElement("script")
+                script.src = XLSX_CDN_URL
+                script.async = true
+                script.defer = true
+                script.crossOrigin = "anonymous"
+                script.setAttribute("data-xlsx-cdn", XLSX_CDN_URL)
+
+                script.onload = () => {
+                    const loadedXLSX = (window as any).XLSX
+                    if (loadedXLSX && typeof loadedXLSX.read === "function") {
+                        resolve(loadedXLSX)
+                    } else {
+                        reject(new Error("XLSX loaded but unavailable"))
+                    }
+                }
+
+                script.onerror = () => {
+                    reject(new Error("Failed to load XLSX script"))
+                }
+
+                if (!existingScript) document.head.appendChild(script)
+            }).catch((error) => {
+                xlsxLoaderPromise = null
+                throw error
+            })
+        }
+
+        return xlsxLoaderPromise
+    }, [])
+
+    const setThresholdValue = useCallback(
+        (skill: string, key: keyof SkillThreshold, value: number) => {
+            startTransition(() => {
+                setThresholds((prev) => ({
+                    ...prev,
+                    [skill]: {
+                        ...(prev[skill] ?? defaultThreshold()),
+                        [key]: value,
+                    },
+                }))
+            })
+        },
+        []
+    )
+
+    const ensureThresholds = useCallback((detectedSkills: string[]) => {
+        startTransition(() => {
+            setThresholds((prev) => {
+                const next = { ...prev }
+                for (const skill of detectedSkills) {
+                    if (!next[skill]) next[skill] = defaultThreshold()
+                }
+                return next
+            })
+        })
+    }, [])
+
+    const applyParsedData = useCallback(
+        (parsedEmployees: EmployeeRecord[], detectedSkills: string[], message: string, fallback: boolean) => {
+            startTransition(() => {
+                setEmployees(parsedEmployees)
+                setSkills(detectedSkills)
+                setExpanded({})
+                setStatusMessage(message)
+                setUsingFallback(fallback)
+            })
+            ensureThresholds(detectedSkills)
+        },
+        [ensureThresholds]
+    )
+
+    const parseWorkbookWithXLSX = useCallback(
+        (xlsx: any, arrayBuffer: ArrayBuffer) => {
+            const workbook = xlsx.read(arrayBuffer, { type: "array" })
+            const employeeMap: Record<string, EmployeeRecord> = {}
+            const detectedSkills: string[] = []
+
+            for (const sheetName of workbook.SheetNames as string[]) {
+                const sheet = workbook.Sheets[sheetName]
+                const rows = xlsx.utils.sheet_to_json(sheet, { defval: "" }) as Record<string, unknown>[]
+                const isQuality = sheetName.trim().toLowerCase() === "quality"
+
+                if (!isQuality) detectedSkills.push(sheetName)
+
+                for (const row of rows) {
+                    const nameRaw = resolveColumnValue(row, [/employee/i, /^name$/i, /employee\s*name/i])
+                    const employeeName = String(nameRaw ?? "").trim()
+                    if (!employeeName) continue
+
+                    if (!employeeMap[employeeName]) {
+                        employeeMap[employeeName] = { name: employeeName, skills: {} }
+                    }
+
+                    if (isQuality) {
+                        employeeMap[employeeName].quality = {
+                            audits: parseNumber(resolveColumnValue(row, [/#\s*of\s*audits/i, /audits?/i])),
+                            markdown: parseNumber(resolveColumnValue(row, [/#\s*of\s*markdown/i, /markdown/i])),
+                            under100: parseNumber(
+                                resolveColumnValue(row, [/#\s*of\s*<\s*100/i, /dpu/i, /dpo/i, /under\s*100/i])
+                            ),
+                        }
+                    } else {
+                        employeeMap[employeeName].skills[sheetName] = {
+                            metric: parseNumber(
+                                resolveColumnValue(row, [/aht/i, /case\s*rate/i, /prod(?:uction)?\s*rate/i])
+                            ),
+                            prodHrs: parseNumber(resolveColumnValue(row, [/prod\s*hrs/i, /prod\s*hours/i, /hours/i])),
+                        }
+                    }
+                }
+            }
+
+            const parsedEmployees = Object.values(employeeMap)
+            applyParsedData(
+                parsedEmployees,
+                Array.from(new Set(detectedSkills)),
+                `Workbook parsed successfully in browser. ${parsedEmployees.length} employees detected.`,
+                false
+            )
+        },
+        [applyParsedData]
+    )
+
+    const onUploadWorkbook = useCallback(
+        (event: ChangeEvent<HTMLInputElement>) => {
+            const file = event.target.files?.[0]
+            if (!file) return
+
+            const extensionOk = /\.(xlsx|xls)$/i.test(file.name)
+            if (!extensionOk) {
+                startTransition(() => {
+                    setStatusMessage("Invalid file type. Please upload .xlsx or .xls.")
+                })
+                return
+            }
+
+            if (typeof window === "undefined") {
+                startTransition(() => {
+                    setStatusMessage("File parsing is available only in browser preview/runtime.")
+                })
+                return
+            }
+
+            const reader = new FileReader()
+            reader.onload = async () => {
+                const result = reader.result
+                if (!(result instanceof ArrayBuffer)) {
+                    startTransition(() => {
+                        setStatusMessage("Could not read workbook content.")
+                    })
+                    return
+                }
+
+                try {
+                    const xlsx = await loadXLSXRuntime()
+                    parseWorkbookWithXLSX(xlsx, result)
+                    return
+                } catch (error) {
+                    startTransition(() => {
+                        setStatusMessage(
+                            "XLSX parser dependency is not bundled in this environment. Showing fully interactive demo dataset. Add SheetJS/XLSX to enable real workbook parsing."
+                        )
+                    })
+                }
+
+                applyParsedData(
+                    demoWorkbookData,
+                    ["Intake", "Claims", "Appeals"],
+                    "XLSX parser dependency is not bundled in this environment. Showing fully interactive demo dataset. Add SheetJS/XLSX to enable real workbook parsing.",
+                    true
+                )
+            }
+            reader.readAsArrayBuffer(file)
+        },
+        [applyParsedData, parseWorkbookWithXLSX, loadXLSXRuntime]
+    )
+
+    const computedEmployees = useMemo(() => {
+        const list: ComputedEmployee[] = employees.map((employee) => {
+            const skillRows = skills.map((skill) => {
+                const skillData = employee.skills[skill] ?? { metric: null, prodHrs: 0 }
+                const threshold = thresholds[skill] ?? defaultThreshold()
+                const rating = getRating(skillData.metric, threshold)
+                return {
+                    skill,
+                    metric: skillData.metric,
+                    prodHrs: skillData.prodHrs,
+                    rating,
+                    target: threshold.target,
+                }
+            })
+
+            const presentSkills = skillRows.filter((row) => row.metric !== null)
+            const weightedHours = presentSkills.reduce((sum, row) => sum + row.prodHrs, 0)
+            const weightedScore = presentSkills.reduce((sum, row) => sum + row.rating * row.prodHrs, 0)
+            const avgScore =
+                weightedHours > 0
+                    ? weightedScore / weightedHours
+                    : presentSkills.length > 0
+                      ? presentSkills.reduce((sum, row) => sum + row.rating, 0) / presentSkills.length
+                      : 0
+
+            const missingSkills = skillRows.filter((row) => row.metric === null).map((row) => row.skill)
+            const notes =
+                missingSkills.length > 0
+                    ? `Missing ${missingSkills.length} skill(s): ${missingSkills.join(", ")}.`
+                    : "Complete skill coverage."
+
+            return {
+                name: employee.name,
+                finalRate: Number(avgScore.toFixed(2)),
+                missingSkills,
+                weightedHours: Number(weightedHours.toFixed(1)),
+                ratings: skillRows,
+                quality: employee.quality,
+                notes,
+            }
+        })
+
+        const filtered = list.filter((item) =>
+            item.name.toLowerCase().includes(searchQuery.trim().toLowerCase())
+        )
+
+        if (sortOption === "low-to-high") {
+            filtered.sort((a, b) => a.finalRate - b.finalRate)
+        } else if (sortOption === "name-a-z") {
+            filtered.sort((a, b) => a.name.localeCompare(b.name))
+        } else {
+            filtered.sort((a, b) => b.finalRate - a.finalRate)
+        }
+
+        return filtered
+    }, [employees, searchQuery, skills, sortOption, thresholds])
+
+    const supervisorPAR = useMemo(() => {
+        const headcount = computedEmployees.length
+        const passCount = computedEmployees.filter((employee) => employee.finalRate >= passThreshold).length
+        const value = headcount > 0 ? (passCount / headcount) * 100 : 0
+        return { headcount, passCount, value }
+    }, [computedEmployees, passThreshold])
+
+    const glassCardStyle = useMemo(
+        () => ({
+            border: `1px solid ${lineColor}`,
+            background: `linear-gradient(145deg, ${cardBackground}, ${creamBackground})`,
+            borderRadius: 24,
+            padding: 20,
+            marginBottom: 16,
+            boxShadow: "0 10px 30px rgba(36, 28, 20, 0.10), inset 0 1px 0 rgba(255,255,255,0.55)",
+            backdropFilter: "blur(12px)",
+            WebkitBackdropFilter: "blur(12px)",
+        }),
+        [cardBackground, creamBackground, lineColor]
+    )
+
+    const inputBaseStyle = useMemo(
+        () => ({
+            ...bodyFont,
+            width: "100%",
+            boxSizing: "border-box" as const,
+            border: `1px solid ${lineColor}`,
+            borderRadius: 14,
+            padding: "11px 13px",
+            background: creamBackground,
+            color: navyColor,
+            transition: "box-shadow 180ms ease, border-color 180ms ease, transform 180ms ease",
+            outline: "none",
+        }),
+        [bodyFont, creamBackground, lineColor, navyColor]
+    )
+
+    return (
+        <main
+            style={{
+                position: "relative",
+                width: "100%",
+                background: `linear-gradient(180deg, ${creamBackground}, ${cardBackground})`,
+                color: navyColor,
+                padding: 24,
+                boxSizing: "border-box",
+                fontFamily: bodyFont?.fontFamily,
+                overflow: "hidden",
+            }}
+        >
+            <div
+                aria-hidden
+                style={{
+                    position: "absolute",
+                    top: -80,
+                    right: -80,
+                    width: 240,
+                    height: 240,
+                    borderRadius: "50%",
+                    background: "radial-gradient(circle, rgba(184,136,70,0.25) 0%, transparent 70%)",
+                    pointerEvents: "none",
+                }}
+            />
+            <div
+                aria-hidden
+                style={{
+                    position: "absolute",
+                    bottom: 120,
+                    left: -90,
+                    width: 280,
+                    height: 280,
+                    borderRadius: "50%",
+                    background: "radial-gradient(circle, rgba(19,35,58,0.13) 0%, transparent 72%)",
+                    pointerEvents: "none",
+                }}
+            />
+            <section style={{ ...glassCardStyle, position: "relative", zIndex: 1 }}>
+                <div
+                    style={{
+                        display: "grid",
+                        gridTemplateColumns: "minmax(0, 1fr) minmax(220px, 300px)",
+                        gap: 14,
+                        alignItems: "start",
+                    }}
+                >
+                    <div>
+                <div
+                    style={{
+                        ...bodyFont,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.08em",
+                        fontSize: bodyFont?.fontSize ?? "12px",
+                        color: goldColor,
+                        marginBottom: 12,
+                    }}
+                >
+                    Cluster Leounatics · Pharmacy PA Operations
+                </div>
+                <div
+                    style={{
+                        ...headingFont,
+                        color: navyColor,
+                        marginBottom: 8,
+                        display: "flex",
+                        flexWrap: "wrap",
+                        gap: 8,
+                    }}
+                >
+                    <span>Prod</span>
+                    <em style={{ fontStyle: "italic" }}>Calculation</em>
+                </div>
+                <div style={{ ...bodyFont, color: navyColor, opacity: 0.9 }}>
+                    Upload a workbook, review per-skill thresholds, and instantly compute ranked Final
+                    Production Rates and Supervisor PAR. Everything runs client-side only (no server upload).
+                </div>
+                    </div>
+                    <aside
+                        role="status"
+                        aria-live="polite"
+                        style={{
+                            border: `1px solid ${lineColor}`,
+                            borderRadius: 18,
+                            padding: 14,
+                            background: creamBackground,
+                            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.7)",
+                        }}
+                    >
+                        <div style={{ ...bodyFont, color: navyColor, opacity: 0.8, marginBottom: 4 }}>
+                            Supervisor PAR
+                        </div>
+                        <div style={{ ...headingFont, color: navyColor, fontSize: "30px", marginBottom: 4 }}>
+                            {supervisorPAR.value.toFixed(1)}%
+                        </div>
+                        <div style={{ ...bodyFont, color: navyColor }}>
+                            {supervisorPAR.passCount} pass / {supervisorPAR.headcount} HC
+                        </div>
+                    </aside>
+                </div>
+            </section>
+
+            <section style={{ ...glassCardStyle, position: "relative", zIndex: 1 }}>
+                <div style={{ ...bodyFont, color: navyColor, marginBottom: 10 }}>
+                    <span
+                        style={{
+                            display: "inline-block",
+                            minWidth: 34,
+                            textAlign: "center",
+                            borderRadius: 999,
+                            padding: "3px 10px",
+                            marginRight: 8,
+                            border: `1px solid ${lineColor}`,
+                            color: goldColor,
+                            background: creamBackground,
+                        }}
+                    >
+                        01
+                    </span>
+                    Upload workbook (.xlsx or .xls)
+                </div>
+                <label style={{ ...bodyFont, display: "block", marginBottom: 8 }} htmlFor="prod-upload-input">
+                    Workbook file
+                </label>
+                <input
+                    id="prod-upload-input"
+                    type="file"
+                    accept=".xlsx,.xls"
+                    onChange={onUploadWorkbook}
+                    aria-label="Upload workbook file"
+                    style={{
+                        ...inputBaseStyle,
+                        borderColor: focusedControl === "upload" ? goldColor : lineColor,
+                        boxShadow:
+                            focusedControl === "upload"
+                                ? "0 0 0 3px rgba(184,136,70,0.22), inset 0 1px 0 rgba(255,255,255,0.85)"
+                                : "inset 0 1px 0 rgba(255,255,255,0.8)",
+                    }}
+                    onFocus={() => startTransition(() => setFocusedControl("upload"))}
+                    onBlur={() => startTransition(() => setFocusedControl(""))}
+                />
+                <div style={{ ...bodyFont, marginTop: 10, color: usingFallback ? goldColor : navyColor }}>
+                    {statusMessage}
+                </div>
+            </section>
+
+            <section style={{ ...glassCardStyle, position: "relative", zIndex: 1 }}>
+                <div style={{ ...bodyFont, color: navyColor, marginBottom: 12 }}>
+                    <span
+                        style={{
+                            display: "inline-block",
+                            minWidth: 34,
+                            textAlign: "center",
+                            borderRadius: 999,
+                            padding: "3px 10px",
+                            marginRight: 8,
+                            border: `1px solid ${lineColor}`,
+                            color: goldColor,
+                            background: creamBackground,
+                        }}
+                    >
+                        02
+                    </span>
+                    Reference thresholds by skill
+                </div>
+                {skills.length === 0 ? (
+                    <div style={{ ...bodyFont, color: navyColor, opacity: 0.75 }}>
+                        Upload a workbook to detect skills and edit targets.
+                    </div>
+                ) : (
+                    <div
+                        style={{
+                            overflowX: "auto",
+                            border: `1px solid ${lineColor}`,
+                            borderRadius: 16,
+                            background: creamBackground,
+                            padding: 8,
+                        }}
+                    >
+                        <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 700, overflow: "hidden" }}>
+                            <thead>
+                                <tr>
+                                    {["Skill", "Target", "Rating 5", "Rating 4", "Rating 3", "Rating 2", "Rating 1"].map(
+                                        (col) => (
+                                            <th
+                                                key={col}
+                                                style={{
+                                                    ...bodyFont,
+                                                    textAlign: "left",
+                                                    borderBottom: `1px solid ${lineColor}`,
+                                                    padding: "10px 8px",
+                                                }}
+                                            >
+                                                {col}
+                                            </th>
+                                        )
+                                    )}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {skills.map((skill) => {
+                                    const row = thresholds[skill] ?? defaultThreshold()
+                                    const numericCell = (key: keyof SkillThreshold) => (
+                                        <td style={{ borderBottom: `1px solid ${lineColor}`, padding: "8px" }}>
+                                            <input
+                                                aria-label={`${skill} ${key}`}
+                                                type="number"
+                                                value={row[key]}
+                                                onChange={(e) =>
+                                                    setThresholdValue(skill, key, Number(e.target.value || 0))
+                                                }
+                                                style={{
+                                                    ...inputBaseStyle,
+                                                    padding: "8px 10px",
+                                                    borderRadius: 12,
+                                                }}
+                                            />
+                                        </td>
+                                    )
+
+                                    return (
+                                        <tr key={skill}>
+                                            <td
+                                                style={{
+                                                    ...bodyFont,
+                                                    borderBottom: `1px solid ${lineColor}`,
+                                                    padding: "10px 8px",
+                                                }}
+                                            >
+                                                {skill}
+                                            </td>
+                                            {numericCell("target")}
+                                            {numericCell("rating5")}
+                                            {numericCell("rating4")}
+                                            {numericCell("rating3")}
+                                            {numericCell("rating2")}
+                                            {numericCell("rating1")}
+                                        </tr>
+                                    )
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+            </section>
+
+            <section style={{ ...glassCardStyle, position: "relative", zIndex: 1 }}>
+                <div style={{ ...bodyFont, color: navyColor, marginBottom: 12 }}>
+                    <span
+                        style={{
+                            display: "inline-block",
+                            minWidth: 34,
+                            textAlign: "center",
+                            borderRadius: 999,
+                            padding: "3px 10px",
+                            marginRight: 8,
+                            border: `1px solid ${lineColor}`,
+                            color: goldColor,
+                            background: creamBackground,
+                        }}
+                    >
+                        03
+                    </span>
+                    Search, sort, and ranking
+                </div>
+                <div
+                    style={{
+                        display: "grid",
+                        gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+                        gap: 12,
+                        marginBottom: 16,
+                    }}
+                >
+                    <div>
+                        <label style={{ ...bodyFont, display: "block", marginBottom: 6 }} htmlFor="search-employees">
+                            Search employee name
+                        </label>
+                        <input
+                            id="search-employees"
+                            type="text"
+                            value={searchQuery}
+                            onChange={(e) => {
+                                startTransition(() => setSearchQuery(e.target.value))
+                            }}
+                            aria-label="Search employee name"
+                            style={{
+                                ...inputBaseStyle,
+                                borderColor: focusedControl === "search" ? goldColor : lineColor,
+                                boxShadow:
+                                    focusedControl === "search"
+                                        ? "0 0 0 3px rgba(184,136,70,0.22), inset 0 1px 0 rgba(255,255,255,0.85)"
+                                        : "inset 0 1px 0 rgba(255,255,255,0.8)",
+                            }}
+                            onFocus={() => startTransition(() => setFocusedControl("search"))}
+                            onBlur={() => startTransition(() => setFocusedControl(""))}
+                        />
+                    </div>
+                    <div>
+                        <label style={{ ...bodyFont, display: "block", marginBottom: 6 }} htmlFor="sort-employees">
+                            Sort by
+                        </label>
+                        <select
+                            id="sort-employees"
+                            value={sortOption}
+                            onChange={(e) => {
+                                startTransition(() => setSortOption(e.target.value))
+                            }}
+                            aria-label="Sort employees"
+                            style={{
+                                ...inputBaseStyle,
+                                borderColor: focusedControl === "sort" ? goldColor : lineColor,
+                                boxShadow:
+                                    focusedControl === "sort"
+                                        ? "0 0 0 3px rgba(184,136,70,0.22), inset 0 1px 0 rgba(255,255,255,0.85)"
+                                        : "inset 0 1px 0 rgba(255,255,255,0.8)",
+                            }}
+                            onFocus={() => startTransition(() => setFocusedControl("sort"))}
+                            onBlur={() => startTransition(() => setFocusedControl(""))}
+                        >
+                            <option value="high-to-low">Final Prod Rate high to low</option>
+                            <option value="low-to-high">Final Prod Rate low to high</option>
+                            <option value="name-a-z">Name A to Z</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div
+                    role="status"
+                    aria-live="polite"
+                    style={{
+                        border: `1px solid ${lineColor}`,
+                        background: creamBackground,
+                        borderRadius: 16,
+                        padding: 14,
+                        marginBottom: 12,
+                        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.75)",
+                    }}
+                >
+                    <div style={{ ...bodyFont, color: navyColor }}>
+                        Supervisor PAR: <strong>{supervisorPAR.passCount}</strong> pass ÷{" "}
+                        <strong>{supervisorPAR.headcount}</strong> headcount ={" "}
+                        <strong style={{ color: goldColor }}>{supervisorPAR.value.toFixed(1)}%</strong>
+                    </div>
+                    <div style={{ ...bodyFont, color: navyColor, opacity: 0.8 }}>
+                        Pass threshold currently set at Final Production Rate ≥ {passThreshold.toFixed(1)}.
+                    </div>
+                </div>
+
+                {computedEmployees.length === 0 ? (
+                    <div style={{ ...bodyFont, color: navyColor, opacity: 0.75 }}>
+                        Empty state: upload workbook to compute rankings.
+                    </div>
+                ) : (
+                    <div style={{ display: "grid", gap: 10 }}>
+                        {computedEmployees.map((employee, index) => (
+                            <article
+                                key={employee.name}
+                                style={{
+                                    border: `1px solid ${lineColor}`,
+                                    borderRadius: 18,
+                                    background: creamBackground,
+                                    padding: 14,
+                                    boxShadow: "0 8px 18px rgba(31, 24, 18, 0.08), inset 0 1px 0 rgba(255,255,255,0.8)",
+                                }}
+                            >
+                                <div
+                                    style={{
+                                        display: "flex",
+                                        justifyContent: "space-between",
+                                        alignItems: "center",
+                                        gap: 10,
+                                        flexWrap: "wrap",
+                                    }}
+                                >
+                                    <div style={{ ...bodyFont, color: navyColor }}>
+                                        <span
+                                            style={{
+                                                display: "inline-block",
+                                                borderRadius: 999,
+                                                border: `1px solid ${lineColor}`,
+                                                background: cardBackground,
+                                                color: goldColor,
+                                                padding: "3px 9px",
+                                                marginRight: 8,
+                                            }}
+                                        >
+                                            #{index + 1}
+                                        </span>
+                                        {employee.name}
+                                    </div>
+                                    <div
+                                        style={{
+                                            ...bodyFont,
+                                            color: navyColor,
+                                            borderRadius: 999,
+                                            border: `1px solid ${lineColor}`,
+                                            background: "rgba(184,136,70,0.12)",
+                                            padding: "5px 10px",
+                                        }}
+                                    >
+                                        Final Rate: <strong>{employee.finalRate.toFixed(2)}</strong>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            startTransition(() => {
+                                                setExpanded((prev) => ({
+                                                    ...prev,
+                                                    [employee.name]: !prev[employee.name],
+                                                }))
+                                            })
+                                        }}
+                                        aria-expanded={Boolean(expanded[employee.name])}
+                                        aria-label={`Toggle details for ${employee.name}`}
+                                        style={{
+                                            ...bodyFont,
+                                            border: `1px solid ${lineColor}`,
+                                            borderRadius: 999,
+                                            background: cardBackground,
+                                            color: navyColor,
+                                            padding: "7px 12px",
+                                            cursor: "pointer",
+                                            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.8)",
+                                        }}
+                                    >
+                                        {expanded[employee.name] ? "Hide details" : "Show details"}
+                                    </button>
+                                </div>
+
+                                {expanded[employee.name] ? (
+                                    <div style={{ marginTop: 10 }}>
+                                        <div style={{ ...bodyFont, color: navyColor, marginBottom: 8 }}>
+                                            {employee.notes} Total weighted production hours: {employee.weightedHours.toFixed(1)}
+                                        </div>
+                                        <div style={{ display: "grid", gap: 6 }}>
+                                            {employee.ratings.map((row) => (
+                                                <div
+                                                    key={`${employee.name}-${row.skill}`}
+                                                    style={{
+                                                        ...bodyFont,
+                                                        display: "grid",
+                                                        gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))",
+                                                        gap: 6,
+                                                        border: `1px solid ${lineColor}`,
+                                                        borderRadius: 12,
+                                                        padding: "8px 10px",
+                                                        background: cardBackground,
+                                                    }}
+                                                >
+                                                    <span>{row.skill}</span>
+                                                    <span>Metric: {row.metric ?? "N/A"}</span>
+                                                    <span>ProdHrs: {row.prodHrs.toFixed(1)}</span>
+                                                    <span>Rating: {row.rating}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                        {employee.quality ? (
+                                            <div style={{ ...bodyFont, marginTop: 8, color: navyColor }}>
+                                                Quality — Audits: {employee.quality.audits}, Markdown:{" "}
+                                                {employee.quality.markdown}, &lt;100 DPU/DPO: {employee.quality.under100}
+                                            </div>
+                                        ) : null}
+                                    </div>
+                                ) : null}
+                            </article>
+                        ))}
+                    </div>
+                )}
+            </section>
+        </main>
+    )
 }
 
-function parseQualityTab(headers, rows){
-  const nameIdx       = headerIndex(headers, ['employee name','name'], ['supervisor']);
-  const supervisorIdx = headerIndex(headers, ['supervisor']);
-  const auditsIdx     = headerIndex(headers, ['audit']);
-  const under100Idx   = headerIndex(headers, ['<100','under 100','below 100','under100','below100']);
-  const markdownIdx   = headerIndex(headers, ['markdown']);
-
-  if (nameIdx === -1) return; // can't map rows without a name column
-
-  for (let r=1; r<rows.length; r++){
-    const row = rows[r];
-    if (!row || row.length === 0) continue;
-    const nameVal = row[nameIdx];
-    if (!nameVal || String(nameVal).trim() === '') continue;
-
-    const empName = String(nameVal).trim();
-    const supervisorVal = supervisorIdx !== -1 ? row[supervisorIdx] : '';
-    if (supervisorVal && String(supervisorVal).trim() !== ''){
-      supervisorOf[empName] = String(supervisorVal).trim();
-    }
-    const audits = auditsIdx !== -1 ? parseFloat(row[auditsIdx]) : NaN;
-    const under100 = under100Idx !== -1 ? parseFloat(row[under100Idx]) : NaN;
-    const markdown = markdownIdx !== -1 ? parseFloat(row[markdownIdx]) : NaN;
-
-    if (!qualityData[empName]){
-      qualityData[empName] = { audits: 0, under100: 0, markdown: 0, hasData: false };
-    }
-    const q = qualityData[empName];
-    if (!isNaN(audits)) { q.audits += audits; q.hasData = true; }
-    if (!isNaN(under100)) { q.under100 += under100; q.hasData = true; }
-    if (!isNaN(markdown)) { q.markdown += markdown; q.hasData = true; }
-  }
-}
-
-function findObjKeyCaseInsensitive(obj, key){
-  const norm = normalizeKey(key);
-  return Object.keys(obj).find(k => normalizeKey(k) === norm);
-}
-
-/* Seed reference with the known default skills up front so the config
-   table isn't empty before a file is uploaded. */
-function seedDefaults(){
-  reference = {};
-  Object.keys(DEFAULT_REFERENCE).forEach(k => reference[k] = Object.assign({}, DEFAULT_REFERENCE[k]));
-}
-
-/* ---------------------------------------------------------------
-   CALCULATION
---------------------------------------------------------------- */
-function computeSkillRating(ratio, ref){
-  const points = [
-    [ref.r1, 1], [ref.r2, 2], [ref.r3, 3], [ref.r4, 4], [ref.r5, 5]
-  ].filter(p => p[0] !== null && p[0] !== undefined && !isNaN(p[0]));
-
-  points.sort((a,b) => a[0]-b[0]);
-  if (points.length < 2) return null;
-
-  if (ratio <= points[0][0]){
-    return { rating: points[0][1], fractional: 0, lowerT: points[0][0], upperT: points[Math.min(1,points.length-1)][0], lowerRating: points[0][1], upperRating: points[Math.min(1,points.length-1)][1] };
-  }
-  if (ratio >= points[points.length-1][0]){
-    const last = points.length-1;
-    return { rating: points[last][1], fractional: 1, lowerT: points[last-1][0], upperT: points[last][0], lowerRating: points[last-1][1], upperRating: points[last][1] };
-  }
-  for (let i=0;i<points.length-1;i++){
-    if (ratio >= points[i][0] && ratio <= points[i+1][0]){
-      const span = points[i+1][0] - points[i][0];
-      let frac = span === 0 ? 0 : (ratio - points[i][0]) / span;
-      frac = Math.max(0, Math.min(1, frac));
-      const rating = points[i][1] + frac * (points[i+1][1] - points[i][1]);
-      return { rating, fractional: frac, lowerT: points[i][0], upperT: points[i+1][0], lowerRating: points[i][1], upperRating: points[i+1][1] };
-    }
-  }
-  return null;
-}
-
-function computeEmployee(empName){
-  const emp = employees[empName];
-  const skillNames = Object.keys(emp.skills);
-  const totalHours = skillNames.reduce((sum, s) => {
-    const h = emp.skills[s].hours;
-    return sum + (h && h > 0 ? h : 0);
-  }, 0);
-
-  const rows = skillNames.map(skillName => {
-    const rowData = emp.skills[skillName];
-    const ref = reference[skillName] || {};
-    const missingRef = ref.target === null || ref.target === undefined || ref.r3 === null || ref.r3 === undefined
-      || ref.r5 === null || ref.r5 === undefined || ref.r2 === null || ref.r2 === undefined;
-    const missingActual = rowData.actual === null || rowData.actual === undefined;
-    const missingHours = rowData.hours === null || rowData.hours === undefined || rowData.hours <= 0;
-
-    let ratio = null, ratingInfo = null, weight = 0;
-    if (!missingRef && !missingActual && ref.target > 0){
-      ratio = rowData.actual / ref.target;
-      ratingInfo = computeSkillRating(ratio, ref);
-    }
-    if (!missingHours && totalHours > 0){
-      weight = rowData.hours / totalHours;
-    }
-
-    return {
-      skillName, actual: rowData.actual, hours: rowData.hours, target: ref.target,
-      ratio, ratingInfo, weight,
-      weightedScore: ratingInfo ? ratingInfo.rating * weight : 0,
-      missing: missingRef || missingActual || missingHours
-    };
-  });
-
-  const finalRate = rows.reduce((sum, r) => sum + (isFinite(r.weightedScore) ? r.weightedScore : 0), 0);
-
-  const q = qualityData[empName] || null;
-  let dpu = null, dpo = null;
-  if (q && q.hasData){
-    if (q.audits > 0) dpu = (q.audits - q.under100) / q.audits;
-    if (attributesPerAudit > 0) dpo = (attributesPerAudit - q.markdown) / attributesPerAudit;
-  }
-
-  return { rows, finalRate, totalHours, dpu, dpo, quality: q };
-}
-
-function isPass(result){
-  return result.finalRate !== null && result.finalRate !== undefined && result.finalRate >= 2.99
-    && (result.dpu === null || result.dpu >= 0.95)
-    && (result.dpo === null || result.dpo >= 0.95);
-}
-
-/* ---------------------------------------------------------------
-   RENDER — Supervisor PAR sidebar
---------------------------------------------------------------- */
-function renderParSidebar(){
-  const listEl = document.getElementById('parList');
-  if (!listEl) return;
-
-  const names = Object.keys(employees);
-  if (names.length === 0){
-    listEl.innerHTML = '<div class="par-empty">Upload a workbook to see PAR by supervisor.</div>';
-    return;
-  }
-
-  const bySupervisor = {};
-  names.forEach(name => {
-    const supervisor = supervisorOf[name] || 'Unassigned';
-    const result = computeEmployee(name);
-    if (!bySupervisor[supervisor]) bySupervisor[supervisor] = { total: 0, pass: 0 };
-    bySupervisor[supervisor].total += 1;
-    if (isPass(result)) bySupervisor[supervisor].pass += 1;
-  });
-
-  const supervisors = Object.keys(bySupervisor).sort((a,b) => a.localeCompare(b));
-  listEl.innerHTML = supervisors.map(sup => {
-    const { total, pass } = bySupervisor[sup];
-    const pct = total > 0 ? (pass/total*100) : 0;
-    const pctCls = pct >= 90 ? 'good' : 'bad';
-    return `<div class="par-row">
-      <div>
-        <div class="par-name">${escapeHtml(sup)}</div>
-        <span class="par-count">${pass}/${total} pass</span>
-      </div>
-      <div class="par-pct ${pctCls}">${pct.toFixed(1)}%</div>
-    </div>`;
-  }).join('');
-}
-
-/* ---------------------------------------------------------------
-   RENDER — reference table
---------------------------------------------------------------- */
-function renderReferenceTable(){
-  const body = document.getElementById('refTableBody');
-  const allSkillNames = Object.keys(reference).sort((a,b)=>a.localeCompare(b));
-  const skillNames = allSkillNames.filter(skillName => {
-    const ref = reference[skillName];
-    return ref.target !== null && ref.target !== undefined
-      && ref.r3 !== null && ref.r5 !== null && ref.r2 !== null;
-  });
-  body.innerHTML = '';
-
-  if (allSkillNames.length === 0){
-    body.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--ink-soft);padding:20px;font-family:var(--r-body);">Upload a workbook, or thresholds will populate once tabs are read.</td></tr>';
-    return;
-  }
-
-  if (skillNames.length === 0){
-    body.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--ink-soft);padding:20px;font-family:var(--r-body);">No configured skills yet.</td></tr>';
-    return;
-  }
-
-  skillNames.forEach(skillName => {
-    const ref = reference[skillName];
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td class="skillname">${escapeHtml(skillName)}</td>
-      ${fieldInput(skillName,'target',ref.target)}
-      ${fieldInput(skillName,'r5',ref.r5)}
-      ${fieldInput(skillName,'r4',ref.r4)}
-      ${fieldInput(skillName,'r3',ref.r3)}
-      ${fieldInput(skillName,'r2',ref.r2)}
-      ${fieldInput(skillName,'r1',ref.r1)}
-      <td><span class="badge-configured">configured</span></td>
-    `;
-    body.appendChild(tr);
-  });
-
-  body.querySelectorAll('input[data-skill]').forEach(input => {
-    input.addEventListener('input', onRefFieldChange);
-  });
-
-}
-
-function fieldInput(skillName, field, value){
-  const isPct = field.startsWith('r');
-  const displayVal = value === null || value === undefined ? '' : (isPct ? (value*100).toFixed(2) : value);
-  const missingCls = (value === null || value === undefined) ? 'missing' : '';
-  return `<td><input class="${missingCls}" type="number" step="any" data-skill="${escapeAttr(skillName)}" data-field="${field}" value="${displayVal}" placeholder="${isPct ? '%' : '#'}" /></td>`;
-}
-
-function onRefFieldChange(e){
-  const skill = e.target.getAttribute('data-skill');
-  const field = e.target.getAttribute('data-field');
-  const raw = e.target.value;
-  if (raw === ''){
-    reference[skill][field] = (field === 'r1') ? 0 : null;
-  } else {
-    const num = parseFloat(raw);
-    reference[skill][field] = field.startsWith('r') ? num/100 : num;
-  }
-  e.target.classList.toggle('missing', reference[skill][field] === null || reference[skill][field] === undefined);
-  renderReferenceTable();
-  renderEmployees();
-  renderParSidebar();
-}
-
-
-/* ---------------------------------------------------------------
-   RENDER — employees
---------------------------------------------------------------- */
-function bandClass(rating){
-  if (rating !== null && rating !== undefined && rating > 2.99) return 'b5';
-  return 'b1';
-}
-
-function gaugeSvg(rating){
-  const w = 110, h = 22;
-  const x = 6 + ((Math.max(1,Math.min(5,rating)) - 1) / 4) * (w-12);
-  const colors = ['#A9463A','#B08328','#C6A15B','#6E8B54','#5E7F5A'];
-  const bandColor = colors[Math.min(4,Math.max(0,Math.round(rating)-1))];
-  let ticks = '';
-  for (let i=1;i<=5;i++){
-    const tx = 6 + ((i-1)/4)*(w-12);
-    ticks += `<line x1="${tx}" y1="${h/2-5}" x2="${tx}" y2="${h/2+5}" stroke="#DED4B9" stroke-width="1"/>`;
-  }
-  return `<svg viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg">
-    <line x1="6" y1="${h/2}" x2="${w-6}" y2="${h/2}" stroke="#DED4B9" stroke-width="2"/>
-    ${ticks}
-    <circle cx="${x}" cy="${h/2}" r="5.5" fill="${bandColor}" stroke="#fff" stroke-width="1.5"/>
-  </svg>`;
-}
-
-function renderEmployees(){
-  const listEl = document.getElementById('empList');
-  const countEl = document.getElementById('empCount');
-  const searchTerm = normalizeKey(document.getElementById('searchInput').value);
-  const sortMode = document.getElementById('sortSelect').value;
-
-  let names = Object.keys(employees);
-  if (names.length === 0){
-    listEl.innerHTML = `<div class="empty-state"><b>No employees yet</b>Upload the skill-tab workbook above to populate this list.</div>`;
-    countEl.textContent = '';
-    return;
-  }
-
-  const computed = names.map(n => ({ name: n, result: computeEmployee(n) }));
-  let filtered = computed.filter(c => normalizeKey(c.name).includes(searchTerm));
-
-  filtered.sort((a,b) => {
-    if (sortMode === 'rate-desc') return b.result.finalRate - a.result.finalRate;
-    if (sortMode === 'rate-asc') return a.result.finalRate - b.result.finalRate;
-    return a.name.localeCompare(b.name);
-  });
-
-  countEl.textContent = filtered.length + ' of ' + names.length + ' employee' + (names.length===1?'':'s');
-
-  listEl.innerHTML = '';
-  filtered.forEach(({name, result}) => {
-    const card = document.createElement('div');
-    card.className = 'emp-card';
-
-    const skillChips = result.rows.map(r =>
-      `<span class="skill-chip ${r.missing ? 'miss' : ''}">${escapeHtml(r.skillName)}${r.ratingInfo ? ' · ' + r.ratingInfo.rating.toFixed(2) : ''}</span>`
-    ).join('');
-
-    const detailRows = result.rows.map(r => {
-      const ratio = r.ratio !== null ? r.ratio.toFixed(4) : '—';
-      const rating = r.ratingInfo ? r.ratingInfo.rating.toFixed(3) : '—';
-      const frac = r.ratingInfo ? r.ratingInfo.fractional.toFixed(3) : '—';
-      const minT = r.ratingInfo ? r.ratingInfo.lowerT.toFixed(4) : '—';
-      const maxT = r.ratingInfo ? r.ratingInfo.upperT.toFixed(4) : '—';
-      const weight = (r.weight*100).toFixed(1) + '%';
-      const wscore = r.ratingInfo ? r.weightedScore.toFixed(3) : '—';
-      return `<tr class="${r.missing ? 'miss' : ''}">
-        <td class="skillname">${escapeHtml(r.skillName)}</td>
-        <td>${r.actual ?? '—'}</td>
-        <td>${r.target ?? '—'}</td>
-        <td>${ratio}</td>
-        <td>${minT}</td>
-        <td>${maxT}</td>
-        <td>${frac}</td>
-        <td>${rating}</td>
-        <td>${weight}</td>
-        <td>${wscore}</td>
-      </tr>`;
-    }).join('');
-
-    const dpuTxt = result.dpu !== null ? (result.dpu*100).toFixed(2) + '%' : '—';
-    const dpoTxt = result.dpo !== null ? (result.dpo*100).toFixed(2) + '%' : '—';
-    const qualityLine = result.quality && result.quality.hasData
-      ? `<span style="font-family:var(--r-mono);font-size:12px;color:var(--ink-soft);">Audits: ${result.quality.audits} · &lt;100: ${result.quality.under100} · Markdown: ${result.quality.markdown}</span>
-         <span style="font-family:var(--r-mono);font-size:12px;color:var(--navy);">DPU: <b>${dpuTxt}</b> &nbsp; DPO: <b>${dpoTxt}</b></span>`
-      : `<span style="font-family:var(--r-mono);font-size:12px;color:var(--ink-soft);">No quality data for this employee</span>`;
-
-    const passes = isPass(result);
-
-    card.innerHTML = `
-      <div class="emp-row" data-toggle>
-        <span class="chev">▸</span>
-        <div class="emp-name">${escapeHtml(name)}</div>
-        <div class="emp-skills">${skillChips}</div>
-        <div class="mini-stat">
-          <span class="m-label">DPU</span>
-          <span class="m-val">${dpuTxt}</span>
-        </div>
-        <div class="mini-stat">
-          <span class="m-label">DPO</span>
-          <span class="m-val">${dpoTxt}</span>
-        </div>
-        <div class="fpr-wrap">
-          <div class="gauge">${gaugeSvg(result.finalRate || 1)}</div>
-          <div class="fpr-num ${bandClass(result.finalRate)}">${result.finalRate ? result.finalRate.toFixed(2) : '—'}</div>
-        </div>
-        <span class="pf-badge ${passes ? 'pf-pass' : 'pf-fail'}">${passes ? 'Pass' : 'Fail'}</span>
-      </div>
-      <div class="emp-detail">
-        <table class="detail">
-          <thead>
-            <tr>
-              <th>Skill</th><th>Actual</th><th>Target</th><th>Ratio</th>
-              <th>Min Thr</th><th>Max Thr</th><th>Frac.</th><th>Rating</th>
-              <th>Weight</th><th>Weighted</th>
-            </tr>
-          </thead>
-          <tbody>${detailRows}</tbody>
-        </table>
-        <div class="final-line" style="flex-wrap:wrap;gap:6px 18px;">
-          ${qualityLine}
-        </div>
-        <div class="final-line">
-          <span style="font-family:var(--r-mono);font-size:12px;color:var(--ink-soft);">Total production hours: ${result.totalHours || 0}</span>
-          <b>Final Production Rate: ${result.finalRate ? result.finalRate.toFixed(3) : '—'}</b>
-        </div>
-      </div>
-    `;
-    card.querySelector('[data-toggle]').addEventListener('click', () => {
-      card.classList.toggle('open');
-    });
-    listEl.appendChild(card);
-  });
-}
-
-function escapeHtml(str){
-  return String(str).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-}
-function escapeAttr(str){ return escapeHtml(str); }
-
-document.getElementById('searchInput').addEventListener('input', renderEmployees);
-document.getElementById('sortSelect').addEventListener('change', renderEmployees);
-document.getElementById('refBlockHead').addEventListener('click', function(){
-  const wrap = document.getElementById('refTableWrap');
-  const chevron = document.getElementById('refChevron');
-  const isOpen = wrap.style.display !== 'none';
-  wrap.style.display = isOpen ? 'none' : 'block';
-  chevron.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(90deg)';
-});
-
-/* init */
-seedDefaults();
-renderReferenceTable();
-renderEmployees();
-renderParSidebar();
-</script>
-</body>
-</html>
+addPropertyControls(ProdCalculationApp, {
+    creamBackground: {
+        type: ControlType.Color,
+        title: "Cream",
+        defaultValue: "#F6F1E8",
+    },
+    navyColor: {
+        type: ControlType.Color,
+        title: "Navy",
+        defaultValue: "#13233A",
+    },
+    goldColor: {
+        type: ControlType.Color,
+        title: "Gold",
+        defaultValue: "#B88846",
+    },
+    lineColor: {
+        type: ControlType.Color,
+        title: "Line",
+        defaultValue: "#DFD4C3",
+    },
+    cardBackground: {
+        type: ControlType.Color,
+        title: "Card",
+        defaultValue: "#FFFFFF",
+    },
+    passThreshold: {
+        type: ControlType.Number,
+        title: "Pass >= ",
+        defaultValue: 3,
+        min: 1,
+        max: 5,
+        step: 0.1,
+    },
+    headingFont: {
+        type: ControlType.Font,
+        title: "Heading Font",
+        controls: "extended",
+        defaultFontType: "sans-serif",
+        defaultValue: {
+            fontSize: "40px",
+            variant: "Bold",
+            letterSpacing: "-0.04em",
+            lineHeight: "1em",
+        },
+    },
+    bodyFont: {
+        type: ControlType.Font,
+        title: "Body Font",
+        controls: "extended",
+        defaultFontType: "sans-serif",
+        defaultValue: {
+            fontSize: "15px",
+            variant: "Medium",
+            letterSpacing: "-0.01em",
+            lineHeight: "1.3em",
+        },
+    },
+})
