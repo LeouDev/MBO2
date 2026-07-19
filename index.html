@@ -78,12 +78,12 @@
   }
   h1{
     font-family: var(--r-display);
-    font-weight: 600;
+    font-weight: 500;
     font-size: 34px;
     line-height: 1.05;
     margin: 0;
     color: var(--navy);
-    letter-spacing: -0.01em;
+    letter-spacing: -0.02em;
   }
   .export-btn{
     background: var(--navy);
@@ -108,12 +108,15 @@
     margin-bottom: 26px;
   }
   .summary-main{
-    background: white;
+    background:
+      radial-gradient(circle at 100% 0%, rgba(198,161,91,0.09), transparent 55%),
+      white;
     border: 1px solid var(--line);
     border-radius: 8px;
-    padding: 26px 28px;
+    padding: 30px 32px;
     position: relative;
     overflow: hidden;
+    box-shadow: 0 8px 22px rgba(156,122,52,0.06);
   }
   .summary-top, .stat-row{ position: relative; z-index: 1; }
   .stat-label{
@@ -126,9 +129,10 @@
   }
   .stat-huge{
     font-family: var(--r-display);
-    font-weight: 600;
-    font-size: 52px;
+    font-weight: 500;
+    font-size: 68px;
     line-height: 1;
+    letter-spacing: 0.01em;
     color: var(--navy);
     margin-bottom: 10px;
   }
@@ -141,7 +145,7 @@
     display:flex;
     align-items:center;
     justify-content: space-between;
-    gap: 20px;
+    gap: 36px;
     margin-bottom: 22px;
   }
   .summary-text{ flex:1; min-width: 0; }
@@ -150,6 +154,7 @@
     width: 190px;
     flex-shrink: 0;
     text-align: center;
+    padding: 8px;
   }
   .gauge-wrap svg{ display:block; width:100%; height:auto; }
   .gauge-label{
@@ -190,14 +195,20 @@
   }
 
   .supervisor-card{
-    background: var(--navy);
+    position: relative;
+    background:
+      repeating-linear-gradient(45deg, rgba(255,255,255,0.025) 0 1px, transparent 1px 9px),
+      repeating-linear-gradient(-45deg, rgba(255,255,255,0.025) 0 1px, transparent 1px 9px),
+      linear-gradient(160deg, var(--navy-2), var(--navy) 55%, #0A1428);
     border: 1px solid var(--navy);
     border-radius: 8px;
     padding: 22px 24px;
+    box-shadow: 0 10px 26px rgba(20,15,4,0.22);
+    overflow: hidden;
   }
   .supervisor-card h3{
     font-family: var(--r-display);
-    font-weight: 600;
+    font-weight: 500;
     font-size: 17px;
     margin: 0 0 14px;
     color: var(--cream);
@@ -229,7 +240,7 @@
     font-family: var(--r-mono);
     font-weight: 600;
     font-size: 14.5px;
-    color: var(--gold);
+    color: #D9C08B;
     white-space: nowrap;
   }
   .par-empty{ font-size:13px; color: rgba(246,241,228,0.6); }
@@ -253,7 +264,8 @@
   .panel-title{
     font-family: var(--r-display);
     font-size: 22px;
-    font-weight: 600;
+    font-weight: 500;
+    letter-spacing: -0.01em;
     color: var(--navy);
     margin:0;
     display:flex;
@@ -274,7 +286,8 @@
     background: white;
     border: 1px solid var(--line);
     border-radius: 8px;
-    padding: 12px 16px;
+    padding: 14px 18px;
+    box-shadow: 0 4px 14px rgba(156,122,52,0.05);
     display:flex;
     align-items:center;
     gap: 10px;
@@ -402,12 +415,20 @@
     cursor: pointer;
   }
 
-  .emp-list{ border-top: 1px solid var(--line); }
+  .emp-card-container{
+    background: white;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 8px 22px rgba(156,122,52,0.06);
+  }
+  .emp-list{ }
   .emp-list-head{
     display:grid;
     grid-template-columns: 20px 190px 1fr 148px 80px;
     gap: 22px;
-    padding: 0 6px 8px;
+    padding: 14px 20px 10px;
+    border-bottom: 1px solid var(--line);
     font-family: var(--r-mono);
     font-size: 10.5px;
     letter-spacing: .08em;
@@ -415,15 +436,16 @@
     color: var(--ink-faint);
   }
   .emp-list-head span:last-child{ text-align:right; }
-  .emp-card:nth-child(even){ background: var(--cream-2); }
-  .emp-card:nth-child(even) .emp-row:hover{ background: #E7DFC5; }
+  .emp-card:nth-child(even){ background: rgba(198,161,91,0.045); }
+  .emp-card:nth-child(even) .emp-row:hover{ background: rgba(198,161,91,0.09); }
   .emp-card{ border-bottom: 1px solid var(--line); }
+  .emp-card:last-child{ border-bottom: none; }
   .emp-row{
     display:grid;
     grid-template-columns: 20px 190px 1fr 148px 80px;
     align-items:center;
     gap: 22px;
-    padding: 16px 6px;
+    padding: 16px 20px;
     cursor: pointer;
   }
   .emp-row:hover{ background: #FBF9F2; }
@@ -468,27 +490,37 @@
   .rate-num.fail{ color: var(--bad); }
   .rate-status{
     font-family: var(--r-mono);
-    font-size: 10.5px;
-    letter-spacing: .08em;
+    font-size: 9.5px;
+    font-weight: 600;
+    letter-spacing: .06em;
     text-transform: uppercase;
-    display:block;
-    margin-top: 2px;
+    display:inline-block;
+    margin-top: 5px;
+    padding: 2px 9px;
+    border-radius: 10px;
   }
-  .rate-status.pass{ color: var(--good); }
-  .rate-status.fail{ color: var(--bad); }
+  .rate-status.pass{ color: var(--good); background: rgba(74,107,82,0.13); }
+  .rate-status.fail{ color: var(--bad); background: rgba(162,59,59,0.13); }
 
   .chev{
     font-family: var(--r-mono);
     color: var(--ink-faint);
-    font-size: 13px;
-    transition: transform .15s ease;
+    font-size: 11px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--cream-2);
+    transition: transform .4s cubic-bezier(.34,1.56,.64,1), background .2s ease, color .2s ease;
     flex-shrink: 0;
   }
-  .emp-card.open .chev{ transform: rotate(90deg); }
+  .emp-card.open .chev{ transform: rotate(90deg); background: var(--gold); color: white; }
 
   .emp-detail{
     display:none;
-    padding: 4px 6px 22px;
+    padding: 4px 20px 22px;
   }
   .emp-card.open .emp-detail{ display:block; }
 
@@ -499,9 +531,9 @@
     font-size: 10px;
     letter-spacing:.05em;
     text-transform:uppercase;
-    color: var(--ink-faint);
-    padding: 6px 10px;
-    border-bottom: 1px solid var(--line);
+    color: var(--cream);
+    background: var(--navy);
+    padding: 8px 10px;
   }
   table.detail td{
     padding: 8px 10px;
@@ -550,7 +582,11 @@
   .auth-overlay{
     position: fixed;
     inset: 0;
-    background: var(--cream);
+    background:
+      radial-gradient(circle at 50% 38%, rgba(198,161,91,0.16), transparent 58%),
+      repeating-linear-gradient(0deg, rgba(255,255,255,0.035) 0 1px, transparent 1px 34px),
+      repeating-linear-gradient(90deg, rgba(255,255,255,0.035) 0 1px, transparent 1px 34px),
+      var(--navy);
     z-index: 100;
     display: flex;
     align-items: center;
@@ -559,13 +595,23 @@
   }
   .auth-overlay.hidden{ display: none; }
   .auth-card{
+    position: relative;
     background: white;
     border: 1px solid var(--line);
-    border-radius: 10px;
-    padding: 32px 32px 28px;
+    border-radius: 12px;
+    padding: 36px 34px 30px;
     width: 100%;
     max-width: 380px;
-    box-shadow: 0 12px 32px rgba(15,27,51,0.10);
+    overflow: hidden;
+    box-shadow:
+      0 2px 4px rgba(30,22,4,0.10),
+      0 14px 28px rgba(30,22,4,0.20),
+      0 34px 70px rgba(15,10,2,0.28);
+  }
+  .auth-card::before{
+    content:'';
+    position:absolute; top:0; left:0; right:0; height:3px;
+    background: linear-gradient(90deg, transparent, var(--gold) 25%, var(--gold-deep) 50%, var(--gold) 75%, transparent);
   }
   .auth-tabs{ display:flex; gap:6px; margin-bottom: 22px; background: var(--cream-2); border-radius: 24px; padding: 4px; }
   .auth-tab{
@@ -685,7 +731,7 @@
     z-index: 40;
     transition: background .15s ease, transform .15s ease;
   }
-  .chat-fab:hover{ background: var(--navy-3); transform: translateY(-1px); }
+  .chat-fab:hover{ background: var(--navy-3); box-shadow: 0 0 0 3px rgba(198,161,91,0.45), 0 6px 18px rgba(15,27,51,0.28); }
   .tm-fab{ right: 88px; }
 
   .tm-panel{
@@ -1002,14 +1048,16 @@
         </select>
       </div>
     </div>
-    <div class="emp-list-head">
-      <span></span>
-      <span>Employee</span>
-      <span>Skills · Rating</span>
-      <span>Scale</span>
-      <span>Final Rate</span>
+    <div class="emp-card-container">
+      <div class="emp-list-head">
+        <span></span>
+        <span>Employee</span>
+        <span>Skills · Rating</span>
+        <span>Scale</span>
+        <span>Final Rate</span>
+      </div>
+      <div id="empList"></div>
     </div>
-    <div id="empList"></div>
   </section>
 
   <footer>Prod_calculation · client-side only — nothing you upload leaves this browser.</footer>
@@ -1368,7 +1416,7 @@ async function loadWorkbookFromCloud(){
 }
 
 const DEFAULT_REFERENCE = {
-  "OCN":                       { target: 12,   r5: 1.5385, r4: 1.2222, r3: 1.00, r2: 0.6667, r1: 0 },
+  "OCN":                       { target: 14.5, r5: 1.5385, r4: 1.2222, r3: 1.00, r2: 0.6667, r1: 0 },
   "Outreach":                  { target: 9.5,  r5: 1.50,   r4: 1.2317, r3: 1.00, r2: 0.7779, r1: 0 },
   "B vs D":                    { target: null, r5: 1.45,   r4: 1.2601, r3: 1.00, r2: 0.75,   r1: 0 },
   "EDITS":                     { target: 8,    r5: 1.6663, r4: 1.4326, r3: 1.00, r2: 0.6838, r1: 0 },
