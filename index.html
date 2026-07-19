@@ -1395,10 +1395,10 @@ function renderAll(){
 }
 
 function renderSummary(){
-  const names = Object.keys(employees);
+  const allKeys = Object.keys(employees);
   const exportBtn = document.getElementById('exportBtn');
 
-  if (names.length === 0){
+  if (allKeys.length === 0){
     document.getElementById('teamRateStat').textContent = '—';
     document.getElementById('teamRateSub').textContent = 'Upload a workbook to see results.';
     document.getElementById('passingCount').textContent = '0';
@@ -1408,10 +1408,16 @@ function renderSummary(){
     return;
   }
 
+  const filterEl = document.getElementById('supervisorFilter');
+  const activeFilter = filterEl ? filterEl.value : '';
+  const keys = activeFilter
+    ? allKeys.filter(k => (supervisorOf[k] || 'Unassigned') === activeFilter)
+    : allKeys;
+
   let passCount = 0, reviewCount = 0, missingCount = 0;
   let rateSum = 0, rateCount = 0;
 
-  names.forEach(name => {
+  keys.forEach(name => {
     const result = computeEmployee(name);
     const status = employeeStatus(result);
     if (status === 'pass') passCount++;
@@ -1425,7 +1431,8 @@ function renderSummary(){
 
   const teamRate = rateCount > 0 ? (rateSum / rateCount / 5 * 100) : null;
   document.getElementById('teamRateStat').textContent = teamRate !== null ? teamRate.toFixed(1) + '%' : '—';
-  document.getElementById('teamRateSub').textContent = names.length + ' employee' + (names.length===1?'':'s') + ' · results based on the latest uploaded workbook';
+  const scopeLabel = activeFilter ? ('under ' + activeFilter) : '';
+  document.getElementById('teamRateSub').textContent = keys.length + ' employee' + (keys.length===1?'':'s') + (scopeLabel ? ' ' + scopeLabel : '') + ' · results based on the latest uploaded workbook';
   document.getElementById('passingCount').textContent = passCount;
   document.getElementById('reviewCount').textContent = reviewCount;
   document.getElementById('missingCount').textContent = missingCount;
@@ -1751,6 +1758,7 @@ function escapeAttr(str){ return escapeHtml(str); }
 document.getElementById('searchInput').addEventListener('input', renderEmployees);
 document.getElementById('sortSelect').addEventListener('change', renderEmployees);
 document.getElementById('supervisorFilter').addEventListener('change', function(){
+  renderSummary();
   renderEmployees();
   renderParSidebar();
 });
