@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Call Flow Time & Motion Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --cream: #F6F1E4;
+    --cream-deep: #EEE6D2;
+    --navy: #17274A;
+    --navy-2: #223764;
+    --navy-ink: #0F1A33;
+    --gold: #C79A3C;
+    --gold-light: #E6C878;
+    --line: rgba(23,39,74,0.14);
+    --good: #3E7856;
+    --good-bg: #E4EEE3;
+    --warn: #B4772E;
+    --warn-bg: #F4E8D5;
+    --bad: #A23B3B;
+    --bad-bg: #F3E1DE;
+    --radius: 8px;
+    --shadow: 0 4px 14px rgba(15,26,51,0.10);
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background: var(--cream);
+    color:var(--navy-ink);
+    font-family:'Inter',system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    min-height:100vh;
+    padding:14px 12px 28px;
+    font-size:13px;
+  }
+
+  .wrap{max-width:100%; margin:0 auto;}
+
+  header.top{
+    display:flex; align-items:flex-end; justify-content:space-between; gap:10px;
+    margin-bottom:10px; flex-wrap:wrap;
+  }
+  .brand-eyebrow{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:9px; letter-spacing:.1em; text-transform:uppercase;
+    color:var(--gold); font-weight:600; margin:0 0 2px;
+  }
+  h1{
+    font-family:'Fraunces', serif; font-weight:600; font-size:15px;
+    color:var(--navy); margin:0; line-height:1.2;
+  }
+  .subtitle{color:var(--navy-2); font-size:11px; margin-top:2px; max-width:46ch;}
+
+  .card{
+    background:#fff; border:1px solid var(--line); border-radius:var(--radius);
+    box-shadow:var(--shadow); padding:12px 13px; margin-bottom:10px;
+  }
+  .card h2{
+    font-family:'Fraunces', serif; font-size:13.5px; font-weight:600; color:var(--navy);
+    margin:0 0 9px; display:flex; align-items:center; gap:6px;
+  }
+  .card h2 .tag{
+    font-family:'IBM Plex Mono', monospace; font-size:9px; letter-spacing:.08em;
+    color:var(--gold); background:var(--navy); padding:2px 5px; border-radius:4px;
+    text-transform:uppercase; font-weight:600;
+  }
+
+  .field-row{display:grid; grid-template-columns:1fr 1fr; gap:9px;}
+  @media (max-width:420px){ .field-row{grid-template-columns:1fr;} }
+  label{
+    display:block; font-size:10px; font-weight:600; letter-spacing:.03em;
+    color:var(--navy-2); margin-bottom:4px; text-transform:uppercase;
+  }
+  input[type=text], textarea{
+    width:100%; border:1.5px solid var(--line); border-radius:6px;
+    padding:7px 9px; font-family:'Inter',sans-serif; font-size:12.5px;
+    color:var(--navy-ink); background:var(--cream); transition:border-color .15s;
+  }
+  input[type=text]:focus, textarea:focus, input[type=number]:focus{
+    outline:none; border-color:var(--gold); background:#fff;
+  }
+  textarea{resize:vertical; min-height:56px;}
+
+  /* Baseline rail (signature element) */
+  .rail{
+    display:flex; gap:3px; margin:5px 0 3px; border-radius:6px; overflow:hidden;
+    height:10px; background:var(--cream-deep);
+  }
+  .rail-seg{ background:var(--line); position:relative; }
+  .rail-seg.pending{background:var(--cream-deep);}
+  .rail-seg.active{background:var(--gold-light);}
+  .rail-seg.done-good{background:var(--good);}
+  .rail-seg.done-warn{background:var(--warn);}
+  .rail-seg.done-bad{background:var(--bad);}
+  .rail-labels{
+    display:flex; justify-content:space-between; font-family:'IBM Plex Mono', monospace;
+    font-size:8.5px; color:var(--navy-2); margin-top:4px; letter-spacing:.02em;
+  }
+
+  .baseline-grid{
+    display:grid; grid-template-columns:repeat(5,1fr); gap:6px; margin-top:9px;
+  }
+  @media (max-width:420px){ .baseline-grid{grid-template-columns:repeat(2,1fr);} }
+  .baseline-item label{font-size:9px; margin-bottom:3px;}
+  .baseline-item input{width:100%; text-align:center; font-family:'IBM Plex Mono',monospace; font-weight:600; padding:5px 4px; font-size:11.5px;}
+
+  /* Segments */
+  .segment{
+    border:1.5px solid var(--line); border-radius:var(--radius); padding:9px 10px;
+    margin-bottom:7px; display:flex; align-items:center; gap:9px;
+    background:var(--cream); transition:box-shadow .2s, border-color .2s, background .2s;
+  }
+  .segment.active{
+    border-color:var(--gold); background:#fff; box-shadow:0 0 0 2px rgba(199,154,60,0.16);
+  }
+  .segment.done{background:#fff;}
+  .seg-index{
+    font-family:'Fraunces', serif; font-weight:600; font-size:15px; color:var(--gold);
+    width:18px; text-align:center; flex-shrink:0;
+  }
+  .seg-main{flex:1; min-width:0;}
+  .seg-name{font-weight:600; font-size:12px; color:var(--navy);}
+  .seg-meta{font-size:9.5px; color:var(--navy-2); margin-top:1px; font-family:'IBM Plex Mono',monospace;}
+  .seg-timer{
+    font-family:'IBM Plex Mono', monospace; font-size:16.5px; font-weight:600;
+    color:var(--navy); min-width:64px; text-align:right; flex-shrink:0;
+  }
+  .segment.active .seg-timer{color:var(--gold);}
+  .seg-badge{
+    font-family:'IBM Plex Mono', monospace; font-size:9px; font-weight:600;
+    padding:3px 7px; border-radius:16px; white-space:nowrap; flex-shrink:0;
+  }
+  .badge-good{color:var(--good); background:var(--good-bg);}
+  .badge-warn{color:var(--warn); background:var(--warn-bg);}
+  .badge-bad{color:var(--bad); background:var(--bad-bg);}
+  .badge-pending{color:var(--navy-2); background:var(--cream-deep);}
+
+  /* Controls */
+  .controls{display:flex; gap:7px; flex-wrap:wrap; margin-top:11px;}
+  button{
+    font-family:'Inter',sans-serif; font-weight:600; font-size:12px;
+    border-radius:7px; padding:8px 13px; cursor:pointer; border:1.5px solid transparent;
+    transition:transform .06s, opacity .15s, background .15s;
+  }
+  button:active{transform:scale(0.97);}
+  button:focus-visible{outline:2.5px solid var(--gold); outline-offset:2px;}
+  .btn-primary{background:var(--navy); color:var(--cream);}
+  .btn-primary:hover{background:var(--navy-2);}
+  .btn-gold{background:var(--gold); color:var(--navy);}
+  .btn-gold:hover{background:var(--gold-light);}
+  .btn-outline{background:transparent; color:var(--navy); border-color:var(--navy);}
+  .btn-outline:hover{background:var(--navy); color:var(--cream);}
+  .btn-danger-outline{background:transparent; color:var(--bad); border-color:var(--bad);}
+  .btn-danger-outline:hover{background:var(--bad); color:#fff;}
+  button:disabled{opacity:.4; cursor:not-allowed;}
+
+  .total-row{
+    display:flex; justify-content:space-between; align-items:center;
+    margin-top:10px; padding:9px 12px;
+    background:var(--cream); border:1px solid var(--line); border-radius:8px;
+  }
+  .total-label{font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--navy-2);}
+  .total-value{font-family:'Fraunces',serif; font-size:14px; font-weight:700; color:var(--navy);}
+
+  .summary-table{width:100%; border-collapse:collapse; font-size:11px; margin-top:4px; border:1px solid var(--line); border-radius:6px; overflow:hidden;}
+  .summary-table th{
+    text-align:left; font-size:9px; text-transform:uppercase; letter-spacing:.06em;
+    color:var(--cream); background:var(--navy); padding:7px 8px; font-family:'IBM Plex Mono',monospace; font-weight:500;
+  }
+  .summary-table td{padding:7px 8px; border-bottom:1px solid var(--line); font-family:'IBM Plex Mono',monospace; background:#fff;}
+  .summary-table tr:last-child td{ border-bottom:none; }
+  .summary-table td.name{font-family:'Inter',sans-serif; font-weight:600; color:var(--navy);}
+
+  .toast{
+    position:fixed; bottom:14px; left:50%; transform:translateX(-50%);
+    background:var(--navy); color:var(--cream); padding:8px 15px; border-radius:7px;
+    font-size:11.5px; font-weight:500; box-shadow:var(--shadow); opacity:0; pointer-events:none;
+    transition:opacity .25s, transform .25s;
+    max-width:90%; text-align:center;
+  }
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(-6px);}
+
+  .hint{font-size:10px; color:var(--navy-2); margin-top:3px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div>
+      <p class="brand-eyebrow">Cluster Leou &middot; Call Handling</p>
+      <h1>Time & Motion Tracker</h1>
+      <p class="subtitle">Clock each stage of the call against baseline targets, then send the readout to QA in one click.</p>
+    </div>
+  </header>
+
+  <!-- Call details -->
+  <div class="card">
+    <h2><span class="tag">01</span> Call Details</h2>
+    <div class="field-row">
+      <div>
+        <label for="agentName">Agent Name</label>
+        <input type="text" id="agentName" placeholder="e.g. Leou Comendador">
+      </div>
+      <div>
+        <label for="callRef">Call Reference Number</label>
+        <input type="text" id="callRef" placeholder="e.g. CR-0000123">
+      </div>
+    </div>
+  </div>
+
+  <!-- Baseline -->
+  <div class="card">
+    <h2><span class="tag">02</span> Baseline (seconds per segment)</h2>
+    <div class="baseline-grid" id="baselineGrid"></div>
+    <p class="hint">Adjust before starting the call — these are the targets each segment is measured against.</p>
+  </div>
+
+  <!-- Live call flow -->
+  <div class="card">
+    <h2><span class="tag">03</span> Call Flow</h2>
+
+    <div class="rail" id="rail"></div>
+    <div class="rail-labels" id="railLabels"></div>
+
+    <div style="margin-top:10px;" id="segmentList"></div>
+
+    <div class="total-row">
+      <span class="total-label">Total call time</span>
+      <span class="total-value" id="totalTime">00:00</span>
+    </div>
+
+    <div class="controls">
+      <button class="btn-gold" id="startBtn">Start Call</button>
+      <button class="btn-outline" id="holdBtn" disabled>Hold</button>
+      <button class="btn-primary" id="nextBtn" disabled>Complete Segment</button>
+      <button class="btn-danger-outline" id="resetBtn">Reset</button>
+    </div>
+  </div>
+
+  <!-- Remarks -->
+  <div class="card">
+    <h2><span class="tag">04</span> Remarks</h2>
+    <textarea id="remarks" placeholder="Notes on delays, holds, escalations, or anything that affected timing..."></textarea>
+  </div>
+
+  <!-- Summary + send -->
+  <div class="card">
+    <h2><span class="tag">05</span> Summary</h2>
+    <table class="summary-table">
+      <thead>
+        <tr><th>Segment</th><th>Actual</th><th>Baseline</th><th>Variance</th></tr>
+      </thead>
+      <tbody id="summaryBody"></tbody>
+    </table>
+    <div class="controls">
+      <button class="btn-primary" id="emailBtn">Send Copy via Email</button>
+      <button class="btn-outline" id="copyBtn">Copy Summary as Text</button>
+    </div>
+    <p class="hint">Email opens your default mail app with the summary pre-filled — add the recipient before sending.</p>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  const SEGMENTS = [
+    { key:'opening',      label:'Opening & Verification', baseline:30 },
+    { key:'concern',       label:'Identify the Concern',   baseline:45 },
+    { key:'investigation', label:'Investigation',          baseline:120 },
+    { key:'delivery',      label:'Delivery of Findings',   baseline:75 },
+    { key:'closing',       label:'Closing',                baseline:30 },
+  ];
+
+  let state = {
+    currentIndex: -1,      // -1 = not started
+    started: false,
+    ended: false,
+    holding: false,
+    segmentStart: 0,       // timestamp when current segment/hold-resume began
+    accumulated: 0,        // ms accumulated for current segment before a hold
+    actuals: SEGMENTS.map(()=>null), // seconds, null until completed
+  };
+
+  let tickInterval = null;
+
+  const baselineGrid = document.getElementById('baselineGrid');
+  const segmentList = document.getElementById('segmentList');
+  const rail = document.getElementById('rail');
+  const railLabels = document.getElementById('railLabels');
+  const totalTimeEl = document.getElementById('totalTime');
+  const startBtn = document.getElementById('startBtn');
+  const holdBtn = document.getElementById('holdBtn');
+  const nextBtn = document.getElementById('nextBtn');
+  const resetBtn = document.getElementById('resetBtn');
+  const summaryBody = document.getElementById('summaryBody');
+  const toast = document.getElementById('toast');
+
+  function fmt(sec){
+    sec = Math.max(0, Math.round(sec));
+    const m = Math.floor(sec/60), s = sec%60;
+    return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+  }
+
+  function variance(actual, baseline){
+    if(actual===null) return null;
+    const diff = actual - baseline;
+    const pct = baseline>0 ? (diff/baseline*100) : 0;
+    let status;
+    if(diff<=0) status='good';
+    else if(pct<=15) status='warn';
+    else status='bad';
+    return {diff, pct, status};
+  }
+
+  // Build baseline inputs
+  SEGMENTS.forEach((seg,i)=>{
+    const div = document.createElement('div');
+    div.className='baseline-item';
+    div.innerHTML = `<label for="base-${seg.key}">${seg.label}</label>
+      <input type="number" min="0" id="base-${seg.key}" value="${seg.baseline}">`;
+    baselineGrid.appendChild(div);
+  });
+  SEGMENTS.forEach((seg,i)=>{
+    document.getElementById('base-'+seg.key).addEventListener('input', e=>{
+      seg.baseline = parseInt(e.target.value)||0;
+      renderAll();
+    });
+  });
+
+  // Build rail
+  SEGMENTS.forEach((seg,i)=>{
+    const totalBaseline = SEGMENTS.reduce((a,s)=>a+s.baseline,0) || 1;
+    const cell = document.createElement('div');
+    cell.className='rail-seg pending';
+    cell.style.flex = seg.baseline>0 ? seg.baseline : 1;
+    cell.id = 'rail-'+seg.key;
+    rail.appendChild(cell);
+  });
+  SEGMENTS.forEach(seg=>{
+    const lab = document.createElement('span');
+    lab.textContent = seg.label.split(' ')[0];
+    railLabels.appendChild(lab);
+  });
+
+  // Build segment rows
+  SEGMENTS.forEach((seg,i)=>{
+    const row = document.createElement('div');
+    row.className='segment';
+    row.id='seg-'+seg.key;
+    row.innerHTML = `
+      <div class="seg-index">${i+1}</div>
+      <div class="seg-main">
+        <div class="seg-name">${seg.label}</div>
+        <div class="seg-meta" id="meta-${seg.key}">baseline ${fmt(seg.baseline)}</div>
+      </div>
+      <div class="seg-badge badge-pending" id="badge-${seg.key}">pending</div>
+      <div class="seg-timer" id="timer-${seg.key}">00:00</div>
+    `;
+    segmentList.appendChild(row);
+  });
+
+  function currentSegElapsedMs(){
+    if(state.currentIndex<0) return 0;
+    if(state.holding) return state.accumulated;
+    return state.accumulated + (Date.now() - state.segmentStart);
+  }
+
+  function totalElapsedSec(){
+    let total = 0;
+    state.actuals.forEach(a=>{ if(a!==null) total += a; });
+    if(state.currentIndex>=0 && !state.ended) total += currentSegElapsedMs()/1000;
+    return total;
+  }
+
+  function renderAll(){
+    SEGMENTS.forEach((seg,i)=>{
+      const metaEl = document.getElementById('meta-'+seg.key);
+      const badgeEl = document.getElementById('badge-'+seg.key);
+      const timerEl = document.getElementById('timer-'+seg.key);
+      const rowEl = document.getElementById('seg-'+seg.key);
+      const railEl = document.getElementById('rail-'+seg.key);
+
+      rowEl.classList.remove('active','done');
+      railEl.className = 'rail-seg pending';
+
+      if(i < state.currentIndex || (i===state.currentIndex && state.ended)){
+        // completed
+        const a = state.actuals[i];
+        const v = variance(a, seg.baseline);
+        timerEl.textContent = fmt(a);
+        metaEl.textContent = `baseline ${fmt(seg.baseline)} · ${v.diff<=0 ? 'under' : 'over'} by ${fmt(Math.abs(v.diff))}`;
+        badgeEl.textContent = v.status==='good' ? 'on target' : v.status==='warn' ? 'over target' : 'well over';
+        badgeEl.className = 'seg-badge badge-'+v.status;
+        rowEl.classList.add('done');
+        railEl.classList.add('done-'+v.status);
+      } else if(i === state.currentIndex && !state.ended){
+        // active
+        const sec = currentSegElapsedMs()/1000;
+        timerEl.textContent = fmt(sec);
+        metaEl.textContent = `baseline ${fmt(seg.baseline)} · in progress${state.holding ? ' · on hold' : ''}`;
+        badgeEl.textContent = state.holding ? 'on hold' : 'active';
+        badgeEl.className = 'seg-badge badge-warn';
+        rowEl.classList.add('active');
+        railEl.classList.add('active');
+      } else {
+        // pending
+        timerEl.textContent = '00:00';
+        metaEl.textContent = `baseline ${fmt(seg.baseline)}`;
+        badgeEl.textContent = 'pending';
+        badgeEl.className = 'seg-badge badge-pending';
+      }
+    });
+
+    totalTimeEl.textContent = fmt(totalElapsedSec());
+    renderSummary();
+  }
+
+  function renderSummary(){
+    summaryBody.innerHTML = '';
+    let totalActual = 0, totalBaseline = 0, anyDone=false;
+    SEGMENTS.forEach((seg,i)=>{
+      const a = state.actuals[i];
+      totalBaseline += seg.baseline;
+      const tr = document.createElement('tr');
+      if(a!==null){
+        anyDone = true;
+        totalActual += a;
+        const v = variance(a, seg.baseline);
+        const sign = v.diff>0 ? '+' : (v.diff<0 ? '\u2212' : '');
+        tr.innerHTML = `<td class="name">${seg.label}</td><td>${fmt(a)}</td><td>${fmt(seg.baseline)}</td>
+          <td style="color:${v.status==='good'?'var(--good)':v.status==='warn'?'var(--warn)':'var(--bad)'}">${sign}${fmt(Math.abs(v.diff))}</td>`;
+      } else {
+        tr.innerHTML = `<td class="name">${seg.label}</td><td>&mdash;</td><td>${fmt(seg.baseline)}</td><td>&mdash;</td>`;
+      }
+      summaryBody.appendChild(tr);
+    });
+    const trTotal = document.createElement('tr');
+    const diffTotal = totalActual - totalBaseline;
+    trTotal.innerHTML = `<td class="name" style="font-weight:700;">Total</td><td style="font-weight:700;">${anyDone?fmt(totalActual):'&mdash;'}</td><td style="font-weight:700;">${fmt(totalBaseline)}</td><td style="font-weight:700;">${anyDone?((diffTotal>0?'+':diffTotal<0?'\u2212':'')+fmt(Math.abs(diffTotal))):'&mdash;'}</td>`;
+    summaryBody.appendChild(trTotal);
+  }
+
+  function tick(){ renderAll(); }
+
+  function startTicking(){
+    if(tickInterval) clearInterval(tickInterval);
+    tickInterval = setInterval(tick, 250);
+  }
+  function stopTicking(){
+    if(tickInterval) clearInterval(tickInterval);
+    tickInterval = null;
+  }
+
+  startBtn.addEventListener('click', ()=>{
+    if(state.started) return;
+    state.started = true;
+    state.currentIndex = 0;
+    state.accumulated = 0;
+    state.segmentStart = Date.now();
+    state.holding = false;
+    startTicking();
+    startBtn.disabled = true;
+    holdBtn.disabled = false;
+    nextBtn.disabled = false;
+    nextBtn.textContent = 'Complete Segment';
+    renderAll();
+    showToast('Call started — timing "' + SEGMENTS[0].label + '"');
+  });
+
+  holdBtn.addEventListener('click', ()=>{
+    if(!state.started || state.ended) return;
+    if(!state.holding){
+      state.accumulated = currentSegElapsedMs();
+      state.holding = true;
+      holdBtn.textContent = 'Resume';
+      showToast('Segment on hold');
+    } else {
+      state.segmentStart = Date.now();
+      state.holding = false;
+      holdBtn.textContent = 'Hold';
+      showToast('Resumed');
+    }
+    renderAll();
+  });
+
+  nextBtn.addEventListener('click', ()=>{
+    if(!state.started || state.ended) return;
+    const sec = currentSegElapsedMs()/1000;
+    state.actuals[state.currentIndex] = sec;
+
+    if(state.currentIndex < SEGMENTS.length - 1){
+      state.currentIndex += 1;
+      state.accumulated = 0;
+      state.segmentStart = Date.now();
+      state.holding = false;
+      holdBtn.textContent = 'Hold';
+      showToast('Moved to "' + SEGMENTS[state.currentIndex].label + '"');
+    } else {
+      state.ended = true;
+      stopTicking();
+      nextBtn.disabled = true;
+      holdBtn.disabled = true;
+      nextBtn.textContent = 'Call Complete';
+      showToast('Call complete — summary ready below');
+    }
+    renderAll();
+  });
+
+  resetBtn.addEventListener('click', ()=>{
+    stopTicking();
+    state = {
+      currentIndex:-1, started:false, ended:false, holding:false,
+      segmentStart:0, accumulated:0, actuals: SEGMENTS.map(()=>null),
+    };
+    startBtn.disabled = false;
+    holdBtn.disabled = true;
+    holdBtn.textContent = 'Hold';
+    nextBtn.disabled = true;
+    nextBtn.textContent = 'Complete Segment';
+    renderAll();
+    showToast('Reset — ready for a new call');
+  });
+
+  function showToast(msg){
+    toast.textContent = msg;
+    toast.classList.add('show');
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(()=>toast.classList.remove('show'), 2200);
+  }
+
+  function buildSummaryText(){
+    const agent = document.getElementById('agentName').value.trim() || '(not entered)';
+    const ref = document.getElementById('callRef').value.trim() || '(not entered)';
+    const remarks = document.getElementById('remarks').value.trim() || '(none)';
+    const now = new Date();
+    let lines = [];
+    lines.push('CALL TIME & MOTION SUMMARY');
+    lines.push('Agent: ' + agent);
+    lines.push('Call Reference: ' + ref);
+    lines.push('Date: ' + now.toLocaleString());
+    lines.push('');
+    lines.push('Segment                        Actual    Baseline   Variance');
+    let totalActual = 0, totalBaseline = 0, anyDone = false;
+    SEGMENTS.forEach((seg,i)=>{
+      totalBaseline += seg.baseline;
+      const a = state.actuals[i];
+      const label = seg.label.padEnd(30,' ');
+      if(a!==null){
+        anyDone = true;
+        totalActual += a;
+        const v = variance(a, seg.baseline);
+        const sign = v.diff>0?'+':(v.diff<0?'-':' ');
+        lines.push(label + fmt(a).padEnd(10) + fmt(seg.baseline).padEnd(11) + sign + fmt(Math.abs(v.diff)));
+      } else {
+        lines.push(label + '--'.padEnd(10) + fmt(seg.baseline).padEnd(11) + '--');
+      }
+    });
+    const diffTotal = totalActual - totalBaseline;
+    const sign = diffTotal>0?'+':(diffTotal<0?'-':' ');
+    lines.push('-'.repeat(58));
+    lines.push('TOTAL'.padEnd(30,' ') + (anyDone?fmt(totalActual):'--').padEnd(10) + fmt(totalBaseline).padEnd(11) + (anyDone?sign+fmt(Math.abs(diffTotal)):'--'));
+    lines.push('');
+    lines.push('Remarks: ' + remarks);
+    return lines.join('\n');
+  }
+
+  document.getElementById('emailBtn').addEventListener('click', ()=>{
+    const agent = document.getElementById('agentName').value.trim() || 'Agent';
+    const ref = document.getElementById('callRef').value.trim() || 'N/A';
+    const subject = `Time & Motion Summary - ${agent} - ${ref}`;
+    const body = buildSummaryText();
+    const mailto = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    window.location.href = mailto;
+  });
+
+  document.getElementById('copyBtn').addEventListener('click', ()=>{
+    const text = buildSummaryText();
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(()=>showToast('Summary copied to clipboard'))
+        .catch(()=>fallbackCopy(text));
+    } else {
+      fallbackCopy(text);
+    }
+  });
+
+  function fallbackCopy(text){
+    const ta = document.createElement('textarea');
+    ta.value = text; document.body.appendChild(ta); ta.select();
+    try{ document.execCommand('copy'); showToast('Summary copied to clipboard'); }
+    catch(e){ showToast('Copy failed — select and copy manually'); }
+    document.body.removeChild(ta);
+  }
+
+  renderAll();
+})();
+</script>
+</body>
+</html>
