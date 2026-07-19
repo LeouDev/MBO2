@@ -2446,6 +2446,19 @@ function buildDataContext(){
   return out;
 }
 
+function cleanAIText(text){
+  if (!text) return text;
+  return text
+    .replace(/\$\$([^$]*)\$\$/g, (m, inner) => inner) // $$...$$
+    .replace(/\\text\{([^}]*)\}/g, '$1')               // \text{...}
+    .replace(/\\frac\{([^}]*)\}\{([^}]*)\}/g, '($1) / ($2)') // \frac{a}{b}
+    .replace(/\*\*([^*]+)\*\*/g, '$1')                  // **bold**
+    .replace(/\\times/g, '×')
+    .replace(/\\%/g, '%')
+    .replace(/\$/g, '')
+    .trim();
+}
+
 async function askAI(question, context){
   if (!supabaseClient) return { error: "Supabase isn't configured." };
   const { data: sessionData } = await supabaseClient.auth.getSession();
@@ -2466,7 +2479,7 @@ async function askAI(question, context){
     if (!res.ok){
       return { error: result.error || 'AI request failed.' };
     }
-    return { answer: result.answer };
+    return { answer: cleanAIText(result.answer) };
   } catch (err){
     return { error: "couldn't reach the AI service — check that the ai-chat Edge Function is deployed." };
   }
