@@ -46,6 +46,26 @@
     padding: 40px 28px 90px;
   }
 
+  .side-graphic{
+    position: fixed;
+    left: 4vw;
+    top: 50%;
+    width: 130px;
+    height: auto;
+    color: var(--navy);
+    opacity: 0.16;
+    pointer-events: none;
+    z-index: 0;
+    animation: sideGraphicFloat 7s ease-in-out infinite;
+  }
+  @keyframes sideGraphicFloat{
+    0%, 100% { transform: translateY(-50%); }
+    50% { transform: translateY(calc(-50% - 14px)); }
+  }
+  @media (max-width: 1480px){
+    .side-graphic{ display:none; }
+  }
+
   .top-banner{
     background: #0F1B33;
     color: var(--gold);
@@ -938,6 +958,19 @@
 
 <div class="wrap" id="appRoot" style="display:none;">
 
+  <svg class="side-graphic" viewBox="0 0 160 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <line x1="14" y1="10" x2="14" y2="170" stroke="currentColor" stroke-width="1.5"/>
+    <line x1="14" y1="170" x2="150" y2="170" stroke="currentColor" stroke-width="1.5"/>
+    <polyline points="14,140 42,120 70,150 98,80 126,95 150,40" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="14" cy="140" r="4" fill="currentColor"/>
+    <circle cx="42" cy="120" r="4" fill="currentColor"/>
+    <circle cx="70" cy="150" r="4" fill="currentColor"/>
+    <circle cx="98" cy="80" r="4" fill="currentColor"/>
+    <circle cx="126" cy="95" r="4" fill="currentColor"/>
+    <circle cx="150" cy="40" r="5" fill="var(--gold)" stroke="currentColor" stroke-width="1.5"/>
+  </svg>
+
+
   <div class="top-banner">Cluster Leounatics · Pharmacy PA Operations</div>
 
   <header class="top">
@@ -1074,7 +1107,7 @@
     <div class="chat-head">
       <div>
         <b>Data assistant</b>
-        <span>Answers using the workbook you loaded — runs locally, no external AI call</span>
+        <span>Quick answers run locally; anything else is sent to AI</span>
       </div>
       <button class="chat-close" id="chatClose">✕</button>
     </div>
@@ -2114,13 +2147,22 @@ document.getElementById('refBlockHead').addEventListener('click', function(){
    using local pattern matching over the already-computed results.
    This does not call any external AI service.
 --------------------------------------------------------------- */
+let _chatMsgCounter = 0;
 function appendChatMessage(text, who){
   const body = document.getElementById('chatBody');
   const msg = document.createElement('div');
   msg.className = 'chat-msg ' + (who === 'user' ? 'user' : 'bot');
   msg.textContent = text;
+  const id = 'chatmsg-' + (++_chatMsgCounter);
+  msg.id = id;
   body.appendChild(msg);
   body.scrollTop = body.scrollHeight;
+  return id;
+}
+
+function removeChatMessage(id){
+  const el = document.getElementById(id);
+  if (el) el.remove();
 }
 
 function allEmployeeResults(){
@@ -2377,7 +2419,51 @@ function answerQuery(q){
     return `There are ${rows.length} employee(s) in the loaded workbook.`;
   }
 
-  return "I can answer things like: \"who has the lowest rate\", \"top 5 performers\", \"who's failing EDITS\", \"average DPU\", \"compare Jennifer and Captio\", \"list Lea's team\", or a specific employee's name (typos are okay). Try rephrasing, or ask about a specific employee, supervisor, or skill.";
+  return null;
+}
+
+/* ---------------------------------------------------------------
+   AI FALLBACK — when no local rule matches, ask Gemini via a
+   Supabase Edge Function (which holds the API key server-side).
+--------------------------------------------------------------- */
+function buildDataContext(){
+  const rows = allEmployeeResults();
+  if (rows.length === 0) return '';
+  const MAX_ROWS = 200;
+  const lines = rows.slice(0, MAX_ROWS).map(r => {
+    const passes = isPass(r.result);
+    const skills = r.result.rows.map(s => s.skillName + ' ' + (s.ratingInfo ? s.ratingInfo.rating.toFixed(2) : '—')).join(', ');
+    return `${r.result.name} | EID:${r.key} | Supervisor:${r.supervisor} | FinalRate:${r.result.finalRate.toFixed(2)} | Status:${passes ? 'Pass' : 'Fail'} | DPU:${r.result.dpu !== null ? (r.result.dpu*100).toFixed(1)+'%' : 'N/A'} | DPO:${r.result.dpo !== null ? (r.result.dpo*100).toFixed(1)+'%' : 'N/A'} | Skills: ${skills}`;
+  });
+  let out = lines.join('\n');
+  if (rows.length > MAX_ROWS) out += `\n…and ${rows.length - MAX_ROWS} more employee(s) not shown (dataset truncated for length).`;
+  return out;
+}
+
+async function askAI(question, context){
+  if (!supabaseClient) return { error: "Supabase isn't configured." };
+  const { data: sessionData } = await supabaseClient.auth.getSession();
+  const token = sessionData && sessionData.session ? sessionData.session.access_token : null;
+  if (!token) return { error: 'Not signed in.' };
+
+  try{
+    const res = await fetch(SUPABASE_URL + '/functions/v1/ai-chat', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token,
+        'apikey': SUPABASE_ANON_KEY
+      },
+      body: JSON.stringify({ question, context })
+    });
+    const result = await res.json();
+    if (!res.ok){
+      return { error: result.error || 'AI request failed.' };
+    }
+    return { answer: result.answer };
+  } catch (err){
+    return { error: "couldn't reach the AI service — check that the ai-chat Edge Function is deployed." };
+  }
 }
 
 function sendChatMessage(){
@@ -2386,8 +2472,23 @@ function sendChatMessage(){
   if (!text) return;
   appendChatMessage(text, 'user');
   input.value = '';
-  const reply = answerQuery(text);
-  setTimeout(() => appendChatMessage(reply, 'bot'), 150);
+
+  const localAnswer = answerQuery(text);
+  if (localAnswer !== null){
+    setTimeout(() => appendChatMessage(localAnswer, 'bot'), 150);
+    return;
+  }
+
+  const thinkingId = appendChatMessage('Thinking…', 'bot');
+  const context = buildDataContext();
+  askAI(text, context).then(result => {
+    removeChatMessage(thinkingId);
+    if (result.error){
+      appendChatMessage("I couldn't get an AI answer — " + result.error, 'bot');
+    } else {
+      appendChatMessage(result.answer, 'bot');
+    }
+  });
 }
 
 document.getElementById('chatFab').addEventListener('click', function(){
@@ -2395,7 +2496,7 @@ document.getElementById('chatFab').addEventListener('click', function(){
   const opening = !panel.classList.contains('open');
   panel.classList.toggle('open');
   if (opening && document.getElementById('chatBody').children.length === 0){
-    appendChatMessage("Hi! Ask me about the loaded workbook — e.g. \"top 5 performers\", \"who's failing EDITS\", \"compare Jennifer and Captio\", \"average DPU\", \"list Lea's team\", or just a name.", 'bot');
+    appendChatMessage("Hi! Ask me about the loaded workbook — e.g. \"top 5 performers\", \"who's failing EDITS\", \"compare Jennifer and Captio\", \"average DPU\", \"list Lea's team\", or just a name. Anything else gets passed to AI.", 'bot');
   }
 });
 document.getElementById('chatClose').addEventListener('click', function(){
