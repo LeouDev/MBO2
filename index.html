@@ -686,6 +686,32 @@
     transition: background .15s ease, transform .15s ease;
   }
   .chat-fab:hover{ background: var(--navy-3); transform: translateY(-1px); }
+  .tm-fab{ right: 88px; }
+
+  .tm-panel{
+    position: fixed;
+    right: 24px;
+    bottom: 90px;
+    width: 460px;
+    max-width: calc(100vw - 48px);
+    height: 620px;
+    max-height: calc(100vh - 140px);
+    background: white;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    box-shadow: 0 12px 32px rgba(15,27,51,0.22);
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+    z-index: 41;
+  }
+  .tm-panel.open{ display:flex; }
+  .tm-frame{
+    flex: 1;
+    width: 100%;
+    border: none;
+    background: var(--cream);
+  }
 
   .chat-panel{
     position: fixed;
@@ -738,6 +764,7 @@
     border-radius: 10px;
     font-size: 13px;
     line-height: 1.45;
+    white-space: pre-line;
   }
   .chat-msg.bot{
     background: white;
@@ -795,6 +822,8 @@
     .stat-huge{ font-size: 40px; }
     .chat-panel{ right: 12px; left: 12px; width: auto; bottom: 84px; }
     .chat-fab{ right: 16px; bottom: 16px; }
+    .tm-fab{ right: 80px; }
+    .tm-panel{ right: 12px; left: 12px; width: auto; bottom: 84px; }
     .gauge-wrap{ display:none; }
   }
 </style>
@@ -985,6 +1014,10 @@
 
   <footer>Prod_calculation · client-side only — nothing you upload leaves this browser.</footer>
 
+  <button class="chat-fab tm-fab" id="tmFab" title="Time &amp; Motion Tracker">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"></circle><path d="M12 9v4l3 2"></path><path d="M9 2h6"></path><path d="M19 5l-1.5-1.5"></path></svg>
+  </button>
+
   <button class="chat-fab" id="chatFab" title="Ask about this data">
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
   </button>
@@ -1002,6 +1035,17 @@
       <input type="text" id="chatInput" placeholder="e.g. who has the lowest rate?" />
       <button id="chatSend">Ask</button>
     </div>
+  </div>
+
+  <div class="tm-panel" id="tmPanel">
+    <div class="chat-head">
+      <div>
+        <b>Time &amp; Motion Tracker</b>
+        <span>Call flow segment timing tool</span>
+      </div>
+      <button class="chat-close" id="tmClose">✕</button>
+    </div>
+    <iframe id="tmFrame" class="tm-frame" src="" title="Time and Motion Tracker"></iframe>
   </div>
 </div>
 
@@ -2039,6 +2083,68 @@ function allEmployeeResults(){
   }));
 }
 
+/* ---- fuzzy helpers ---- */
+function levenshtein(a, b){
+  const m = a.length, n = b.length;
+  if (m === 0) return n;
+  if (n === 0) return m;
+  const dp = Array.from({length: m+1}, (_, i) => [i, ...Array(n).fill(0)]);
+  for (let j=0; j<=n; j++) dp[0][j] = j;
+  for (let i=1; i<=m; i++){
+    for (let j=1; j<=n; j++){
+      dp[i][j] = a[i-1] === b[j-1]
+        ? dp[i-1][j-1]
+        : 1 + Math.min(dp[i-1][j-1], dp[i-1][j], dp[i][j-1]);
+    }
+  }
+  return dp[m][n];
+}
+
+function findEmployeeMatch(norm, rows){
+  // exact/substring match first
+  let hit = rows.find(r => r.result.name && norm.includes(normalizeKey(r.result.name)));
+  if (hit) return hit;
+
+  // token-level match: any word in the query matches a word in the name (typo-tolerant)
+  const queryWords = norm.split(' ').filter(w => w.length >= 3);
+  let best = null, bestScore = Infinity;
+  rows.forEach(r => {
+    const nameWords = normalizeKey(r.result.name).split(/[\s,]+/).filter(w => w.length >= 3);
+    nameWords.forEach(nw => {
+      queryWords.forEach(qw => {
+        const dist = levenshtein(nw, qw);
+        // allow small edit distance relative to word length (typo tolerance)
+        const threshold = nw.length <= 4 ? 1 : 2;
+        if (dist <= threshold && dist < bestScore){
+          bestScore = dist;
+          best = r;
+        }
+      });
+    });
+  });
+  return best;
+}
+
+function findSkillMatch(norm){
+  const skillNames = Object.keys(reference);
+  let hit = skillNames.find(s => norm.includes(normalizeKey(s)));
+  if (hit) return hit;
+  // loose match ignoring underscores/spaces
+  hit = skillNames.find(s => norm.replace(/[_\s]/g,'').includes(normalizeKey(s).replace(/[_\s]/g,'')));
+  return hit || null;
+}
+
+function parseTopN(norm){
+  const m = norm.match(/(top|bottom)\s*(\d+)/);
+  if (!m) return null;
+  return { direction: m[1], n: Math.max(1, Math.min(50, parseInt(m[2], 10))) };
+}
+
+function formatEmployeeLine(r){
+  const passes = isPass(r.result);
+  return `${r.result.name} — ${r.result.finalRate.toFixed(2)} (${passes ? 'Pass' : 'Fail'}, ${r.supervisor})`;
+}
+
 function answerQuery(q){
   const norm = normalizeKey(q);
   const rows = allEmployeeResults();
@@ -2047,7 +2153,98 @@ function answerQuery(q){
     return "I don't have any data yet — upload a workbook first.";
   }
 
-  const nameMatch = rows.find(r => r.result.name && norm.includes(normalizeKey(r.result.name)));
+  /* ---- comparison: "compare X and Y" / "X vs Y" ---- */
+  const compareSplit = norm.split(/\bvs\b|\bversus\b|\band\b/).map(s => s.trim()).filter(Boolean);
+  if (/compare|vs\b|versus/.test(norm) && compareSplit.length >= 2){
+    const a = findEmployeeMatch(compareSplit[0], rows);
+    const b = findEmployeeMatch(compareSplit[compareSplit.length - 1], rows);
+    if (a && b && a.key !== b.key){
+      return `${a.result.name}: ${a.result.finalRate.toFixed(2)} (${isPass(a.result) ? 'Pass' : 'Fail'}) vs ${b.result.name}: ${b.result.finalRate.toFixed(2)} (${isPass(b.result) ? 'Pass' : 'Fail'}). ` +
+        `DPU: ${a.result.dpu !== null ? (a.result.dpu*100).toFixed(1)+'%' : '—'} vs ${b.result.dpu !== null ? (b.result.dpu*100).toFixed(1)+'%' : '—'}. ` +
+        `DPO: ${a.result.dpo !== null ? (a.result.dpo*100).toFixed(1)+'%' : '—'} vs ${b.result.dpo !== null ? (b.result.dpo*100).toFixed(1)+'%' : '—'}.`;
+    }
+  }
+
+  /* ---- top N / bottom N ---- */
+  const topN = parseTopN(norm);
+  if (topN){
+    const sorted = [...rows].sort((a,b) => topN.direction === 'top'
+      ? b.result.finalRate - a.result.finalRate
+      : a.result.finalRate - b.result.finalRate);
+    const slice = sorted.slice(0, topN.n);
+    return `${topN.direction === 'top' ? 'Top' : 'Bottom'} ${slice.length} by Final Production Rate:\n` +
+      slice.map((r,i) => `${i+1}. ${formatEmployeeLine(r)}`).join('\n');
+  }
+
+  /* ---- skill-specific queries ---- */
+  const skillHit = findSkillMatch(norm);
+  if (skillHit){
+    const withSkill = rows
+      .map(r => ({ r, row: r.result.rows.find(s => s.skillName === skillHit) }))
+      .filter(x => x.row && x.row.ratingInfo);
+
+    if (withSkill.length === 0){
+      return `No employees currently have a rated "${skillHit}" entry.`;
+    }
+    if (/lowest|worst/.test(norm)){
+      withSkill.sort((a,b) => a.row.ratingInfo.rating - b.row.ratingInfo.rating);
+      const w = withSkill[0];
+      return `${w.r.result.name} has the lowest ${skillHit} rating at ${w.row.ratingInfo.rating.toFixed(2)} (Actual ${w.row.actual}, Target ${w.row.target}).`;
+    }
+    if (/highest|best|top/.test(norm)){
+      withSkill.sort((a,b) => b.row.ratingInfo.rating - a.row.ratingInfo.rating);
+      const w = withSkill[0];
+      return `${w.r.result.name} has the highest ${skillHit} rating at ${w.row.ratingInfo.rating.toFixed(2)} (Actual ${w.row.actual}, Target ${w.row.target}).`;
+    }
+    if (/average|avg/.test(norm)){
+      const avg = withSkill.reduce((s,x) => s + x.row.ratingInfo.rating, 0) / withSkill.length;
+      return `Average ${skillHit} rating is ${avg.toFixed(2)} across ${withSkill.length} employee(s).`;
+    }
+    if (/who.*(fail|below|under)|failing/.test(norm)){
+      const below3 = withSkill.filter(x => x.row.ratingInfo.rating < 3);
+      return below3.length
+        ? `${below3.length} employee(s) rated below 3 on ${skillHit}: ${below3.map(x => x.r.result.name + ' (' + x.row.ratingInfo.rating.toFixed(2) + ')').join(', ')}.`
+        : `Everyone with a ${skillHit} entry is rated 3.0 or above.`;
+    }
+    // default: list everyone's rating for that skill
+    withSkill.sort((a,b) => b.row.ratingInfo.rating - a.row.ratingInfo.rating);
+    return `${skillHit} ratings (${withSkill.length} employee(s)):\n` +
+      withSkill.slice(0, 15).map(x => `${x.r.result.name}: ${x.row.ratingInfo.rating.toFixed(2)}`).join('\n') +
+      (withSkill.length > 15 ? `\n…and ${withSkill.length - 15} more.` : '');
+  }
+
+  /* ---- DPU / DPO specific ---- */
+  if (/dpu/.test(norm) && !findEmployeeMatch(norm, rows)){
+    const withDpu = rows.filter(r => r.result.dpu !== null);
+    if (withDpu.length === 0) return 'No employees currently have DPU data.';
+    if (/lowest|worst/.test(norm)){
+      withDpu.sort((a,b) => a.result.dpu - b.result.dpu);
+      return `${withDpu[0].result.name} has the lowest DPU at ${(withDpu[0].result.dpu*100).toFixed(1)}%.`;
+    }
+    if (/highest|best/.test(norm)){
+      withDpu.sort((a,b) => b.result.dpu - a.result.dpu);
+      return `${withDpu[0].result.name} has the highest DPU at ${(withDpu[0].result.dpu*100).toFixed(1)}%.`;
+    }
+    const avg = withDpu.reduce((s,r) => s + r.result.dpu, 0) / withDpu.length;
+    return `Average DPU is ${(avg*100).toFixed(1)}% across ${withDpu.length} employee(s).`;
+  }
+  if (/dpo/.test(norm) && !findEmployeeMatch(norm, rows)){
+    const withDpo = rows.filter(r => r.result.dpo !== null);
+    if (withDpo.length === 0) return 'No employees currently have DPO data.';
+    if (/lowest|worst/.test(norm)){
+      withDpo.sort((a,b) => a.result.dpo - b.result.dpo);
+      return `${withDpo[0].result.name} has the lowest DPO at ${(withDpo[0].result.dpo*100).toFixed(1)}%.`;
+    }
+    if (/highest|best/.test(norm)){
+      withDpo.sort((a,b) => b.result.dpo - a.result.dpo);
+      return `${withDpo[0].result.name} has the highest DPO at ${(withDpo[0].result.dpo*100).toFixed(1)}%.`;
+    }
+    const avg = withDpo.reduce((s,r) => s + r.result.dpo, 0) / withDpo.length;
+    return `Average DPO is ${(avg*100).toFixed(1)}% across ${withDpo.length} employee(s).`;
+  }
+
+  /* ---- employee lookup (exact or fuzzy) ---- */
+  const nameMatch = findEmployeeMatch(norm, rows);
   if (nameMatch){
     const r = nameMatch.result;
     const passes = isPass(r);
@@ -2061,13 +2258,36 @@ function answerQuery(q){
     return parts.join(' ');
   }
 
+  /* ---- supervisor queries ---- */
   const supervisors = Array.from(new Set(rows.map(r => r.supervisor)));
   const supMatch = supervisors.find(s => norm.includes(normalizeKey(s)));
-  if (supMatch && /par|pass rate|supervisor/.test(norm)){
+  if (supMatch){
     const team = rows.filter(r => r.supervisor === supMatch);
+    if (/list|who|team|roster/.test(norm)){
+      return `${supMatch}'s team (${team.length}):\n` + team.map(formatEmployeeLine).join('\n');
+    }
     const passCount = team.filter(r => isPass(r.result)).length;
     const pct = team.length ? (passCount/team.length*100) : 0;
     return `${supMatch} supervises ${team.length} employee(s) — PAR is ${pct.toFixed(0)}% (${passCount}/${team.length} passing).`;
+  }
+  if (/list.*supervisor|supervisors\b/.test(norm) && !/for|under/.test(norm)){
+    const counts = supervisors.map(s => ({ s, n: rows.filter(r => r.supervisor === s).length }));
+    counts.sort((a,b) => b.n - a.n);
+    return `Supervisors (${supervisors.length}):\n` + counts.map(c => `${c.s}: ${c.n} employee(s)`).join('\n');
+  }
+
+  /* ---- listing failing/passing/missing by name ---- */
+  if (/list|who/.test(norm) && /fail|review/.test(norm)){
+    const list = rows.filter(r => employeeStatus(r.result) === 'review');
+    return list.length
+      ? `${list.length} employee(s) needing review:\n` + list.map(formatEmployeeLine).join('\n')
+      : 'No one is currently in Needs Review.';
+  }
+  if (/list|who/.test(norm) && /pass/.test(norm)){
+    const list = rows.filter(r => employeeStatus(r.result) === 'pass');
+    return list.length
+      ? `${list.length} employee(s) passing:\n` + list.slice(0, 20).map(formatEmployeeLine).join('\n') + (list.length > 20 ? `\n…and ${list.length - 20} more.` : '')
+      : 'No one is currently passing.';
   }
 
   if (/highest|top|best/.test(norm)){
@@ -2109,7 +2329,7 @@ function answerQuery(q){
     return `There are ${rows.length} employee(s) in the loaded workbook.`;
   }
 
-  return "I can answer things like: \"who has the lowest rate\", \"how many are passing\", \"what's Jennifer's DPO\", or \"PAR for Lea\". Try rephrasing, or ask about a specific employee or supervisor by name.";
+  return "I can answer things like: \"who has the lowest rate\", \"top 5 performers\", \"who's failing EDITS\", \"average DPU\", \"compare Jennifer and Captio\", \"list Lea's team\", or a specific employee's name (typos are okay). Try rephrasing, or ask about a specific employee, supervisor, or skill.";
 }
 
 function sendChatMessage(){
@@ -2127,7 +2347,7 @@ document.getElementById('chatFab').addEventListener('click', function(){
   const opening = !panel.classList.contains('open');
   panel.classList.toggle('open');
   if (opening && document.getElementById('chatBody').children.length === 0){
-    appendChatMessage("Hi! Ask me about the loaded workbook — e.g. \"who has the lowest rate\", \"how many are passing\", or a specific employee's name.", 'bot');
+    appendChatMessage("Hi! Ask me about the loaded workbook — e.g. \"top 5 performers\", \"who's failing EDITS\", \"compare Jennifer and Captio\", \"average DPU\", \"list Lea's team\", or just a name.", 'bot');
   }
 });
 document.getElementById('chatClose').addEventListener('click', function(){
@@ -2136,6 +2356,18 @@ document.getElementById('chatClose').addEventListener('click', function(){
 document.getElementById('chatSend').addEventListener('click', sendChatMessage);
 document.getElementById('chatInput').addEventListener('keydown', function(e){
   if (e.key === 'Enter') sendChatMessage();
+});
+
+document.getElementById('tmFab').addEventListener('click', function(){
+  const panel = document.getElementById('tmPanel');
+  const frame = document.getElementById('tmFrame');
+  if (!frame.getAttribute('src')){
+    frame.setAttribute('src', 'time-and-motion.html');
+  }
+  panel.classList.toggle('open');
+});
+document.getElementById('tmClose').addEventListener('click', function(){
+  document.getElementById('tmPanel').classList.remove('open');
 });
 
 seedDefaults();
