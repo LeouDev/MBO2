@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root{
     --navy: #0F1B33;
@@ -502,6 +503,105 @@
   @media (max-width: 860px){
     .summary-grid{ grid-template-columns: 1fr; }
   }
+  /* ---------- Auth ---------- */
+  .auth-overlay{
+    position: fixed;
+    inset: 0;
+    background: var(--cream);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .auth-overlay.hidden{ display: none; }
+  .auth-card{
+    background: white;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 32px 32px 28px;
+    width: 100%;
+    max-width: 380px;
+    box-shadow: 0 12px 32px rgba(15,27,51,0.10);
+  }
+  .auth-tabs{ display:flex; gap:6px; margin-bottom: 22px; background: var(--cream-2); border-radius: 24px; padding: 4px; }
+  .auth-tab{
+    flex:1;
+    padding: 9px 0;
+    border: none;
+    background: none;
+    border-radius: 20px;
+    font-family: var(--r-body);
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--ink-soft);
+    cursor: pointer;
+  }
+  .auth-tab.active{ background: var(--navy); color: var(--cream); }
+  .auth-form label{
+    display:block;
+    font-family: var(--r-mono);
+    font-size: 11px;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    margin: 14px 0 6px;
+  }
+  .auth-form label:first-child{ margin-top: 0; }
+  .auth-form input{
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    font-family: var(--r-body);
+    font-size: 14px;
+    color: var(--ink);
+    background: white;
+  }
+  .auth-form input:focus{ outline: 1px solid var(--gold-deep); border-color: var(--gold-deep); }
+  .auth-error{
+    color: var(--bad);
+    font-size: 12.5px;
+    margin-top: 10px;
+    min-height: 0;
+  }
+  .auth-submit{
+    width: 100%;
+    margin-top: 20px;
+    background: var(--navy);
+    color: var(--cream);
+    border: none;
+    padding: 12px 0;
+    border-radius: 24px;
+    font-family: var(--r-body);
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+  }
+  .auth-submit:hover{ background: var(--navy-3); }
+  .auth-submit:disabled{ opacity: .5; cursor: not-allowed; }
+
+  .account-bar{
+    display:flex;
+    align-items:center;
+    gap: 12px;
+    font-family: var(--r-mono);
+    font-size: 12px;
+    color: var(--ink-soft);
+  }
+  .account-bar b{ color: var(--navy); font-family: var(--r-body); }
+  .logout-btn{
+    background: none;
+    border: 1px solid var(--line);
+    color: var(--ink-soft);
+    padding: 6px 14px;
+    border-radius: 16px;
+    font-family: var(--r-body);
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .logout-btn:hover{ border-color: var(--bad); color: var(--bad); }
+
   /* ---------- Data assistant chat ---------- */
   .chat-fab{
     position: fixed;
@@ -625,14 +725,53 @@
 </style>
 </head>
 <body>
-<div class="wrap">
+
+<div class="auth-overlay" id="authOverlay">
+  <div class="auth-card">
+    <p class="eyebrow">Cluster Leounatics · Pharmacy PA</p>
+    <h1 style="font-size:26px;margin-bottom:22px;">Production overview</h1>
+
+    <div class="auth-tabs">
+      <button class="auth-tab active" id="tabLogin" type="button">Log in</button>
+      <button class="auth-tab" id="tabSignup" type="button">Sign up</button>
+    </div>
+
+    <form id="loginForm" class="auth-form">
+      <label>Username</label>
+      <input type="text" id="loginUsername" autocomplete="username" required />
+      <label>Password</label>
+      <input type="password" id="loginPassword" autocomplete="current-password" required />
+      <div class="auth-error" id="loginError"></div>
+      <button type="submit" class="auth-submit">Log in</button>
+    </form>
+
+    <form id="signupForm" class="auth-form" style="display:none;">
+      <label>Username</label>
+      <input type="text" id="signupUsername" autocomplete="username" required />
+      <label>Password</label>
+      <input type="password" id="signupPassword" autocomplete="new-password" required minlength="6" />
+      <label>Confirm password</label>
+      <input type="password" id="signupPassword2" autocomplete="new-password" required minlength="6" />
+      <div class="auth-error" id="signupError"></div>
+      <button type="submit" class="auth-submit">Create account</button>
+    </form>
+  </div>
+</div>
+
+<div class="wrap" id="appRoot" style="display:none;">
 
   <header class="top">
     <div>
       <p class="eyebrow">Cluster Leounatics · Pharmacy PA</p>
       <h1>Production overview</h1>
     </div>
-    <button class="export-btn" id="exportBtn" disabled>Export report</button>
+    <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+      <div class="account-bar">
+        Signed in as <b id="accountUsername">—</b>
+        <button class="logout-btn" id="logoutBtn" type="button">Log out</button>
+      </div>
+      <button class="export-btn" id="exportBtn" disabled>Export report</button>
+    </div>
   </header>
 
   <div class="summary-grid">
@@ -691,6 +830,7 @@
           <input type="file" id="fileInput" accept=".xlsx,.xls" />
         </button>
         <div id="fileStatus" class="file-status"></div>
+        <div id="cloudStatus" class="file-status"></div>
       </div>
     </div>
   </section>
@@ -762,6 +902,217 @@
 </div>
 
 <script>
+/* ---------------------------------------------------------------
+   AUTH — username/password login via Supabase, using a synthetic
+   email derived from the username (Supabase auth requires an email
+   under the hood, but the user only ever sees/enters a username).
+
+   FILL THESE IN with your Supabase project's values
+   (Settings -> API in the Supabase dashboard):
+--------------------------------------------------------------- */
+const SUPABASE_URL = 'https://sxlvfkkfpqqvnclmugot.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_NCCQQkvU2qt5igq2zOTKug_sU2eTQwR';
+
+const supabaseClient = (SUPABASE_URL.startsWith('http') && window.supabase)
+  ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+  : null;
+
+const AUTH_DOMAIN = 'prodcalc.local'; // fake domain — never sends real email
+let currentUserId = null;
+
+function usernameToEmail(username){
+  const clean = String(username || '').trim().toLowerCase().replace(/[^a-z0-9._-]/g, '');
+  return clean + '@' + AUTH_DOMAIN;
+}
+
+function showAuthOverlay(){
+  document.getElementById('authOverlay').classList.remove('hidden');
+  document.getElementById('appRoot').style.display = 'none';
+  currentUserId = null;
+}
+
+function showApp(username, userId){
+  document.getElementById('authOverlay').classList.add('hidden');
+  document.getElementById('appRoot').style.display = 'block';
+  document.getElementById('accountUsername').textContent = username || 'user';
+  currentUserId = userId || null;
+  loadWorkbookFromCloud();
+}
+
+function setAuthError(id, msg){
+  document.getElementById(id).textContent = msg || '';
+}
+
+async function checkExistingSession(){
+  if (!supabaseClient){
+    setAuthError('loginError', 'Supabase isn\'t configured yet — set SUPABASE_URL and SUPABASE_ANON_KEY in the code.');
+    return;
+  }
+  const { data } = await supabaseClient.auth.getSession();
+  if (data && data.session){
+    const username = data.session.user.user_metadata && data.session.user.user_metadata.username;
+    showApp(username || data.session.user.email.split('@')[0], data.session.user.id);
+  } else {
+    showAuthOverlay();
+  }
+}
+
+document.getElementById('tabLogin').addEventListener('click', function(){
+  document.getElementById('tabLogin').classList.add('active');
+  document.getElementById('tabSignup').classList.remove('active');
+  document.getElementById('loginForm').style.display = 'block';
+  document.getElementById('signupForm').style.display = 'none';
+});
+document.getElementById('tabSignup').addEventListener('click', function(){
+  document.getElementById('tabSignup').classList.add('active');
+  document.getElementById('tabLogin').classList.remove('active');
+  document.getElementById('signupForm').style.display = 'block';
+  document.getElementById('loginForm').style.display = 'none';
+});
+
+document.getElementById('loginForm').addEventListener('submit', async function(e){
+  e.preventDefault();
+  setAuthError('loginError', '');
+  if (!supabaseClient){
+    setAuthError('loginError', 'Supabase isn\'t configured yet — set SUPABASE_URL and SUPABASE_ANON_KEY in the code.');
+    return;
+  }
+  const username = document.getElementById('loginUsername').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  if (!username || !password){ setAuthError('loginError', 'Enter a username and password.'); return; }
+
+  const submitBtn = e.target.querySelector('.auth-submit');
+  submitBtn.disabled = true;
+  const { data, error } = await supabaseClient.auth.signInWithPassword({
+    email: usernameToEmail(username),
+    password
+  });
+  submitBtn.disabled = false;
+
+  if (error){
+    setAuthError('loginError', 'Incorrect username or password.');
+    return;
+  }
+  const displayName = (data.user.user_metadata && data.user.user_metadata.username) || username;
+  showApp(displayName, data.user.id);
+});
+
+document.getElementById('signupForm').addEventListener('submit', async function(e){
+  e.preventDefault();
+  setAuthError('signupError', '');
+  if (!supabaseClient){
+    setAuthError('signupError', 'Supabase isn\'t configured yet — set SUPABASE_URL and SUPABASE_ANON_KEY in the code.');
+    return;
+  }
+  const username = document.getElementById('signupUsername').value.trim();
+  const password = document.getElementById('signupPassword').value;
+  const password2 = document.getElementById('signupPassword2').value;
+
+  if (!username || username.length < 3){ setAuthError('signupError', 'Username must be at least 3 characters.'); return; }
+  if (password.length < 6){ setAuthError('signupError', 'Password must be at least 6 characters.'); return; }
+  if (password !== password2){ setAuthError('signupError', 'Passwords don\'t match.'); return; }
+
+  const submitBtn = e.target.querySelector('.auth-submit');
+  submitBtn.disabled = true;
+  const { data, error } = await supabaseClient.auth.signUp({
+    email: usernameToEmail(username),
+    password,
+    options: { data: { username } }
+  });
+  submitBtn.disabled = false;
+
+  if (error){
+    if (/already registered|already exists/i.test(error.message)){
+      setAuthError('signupError', 'That username is already taken.');
+    } else {
+      setAuthError('signupError', error.message);
+    }
+    return;
+  }
+  if (data.session){
+    showApp(username, data.user.id);
+  } else {
+    setAuthError('signupError', 'Account created — log in below.');
+    document.getElementById('tabLogin').click();
+  }
+});
+
+document.getElementById('logoutBtn').addEventListener('click', async function(){
+  if (supabaseClient) await supabaseClient.auth.signOut();
+  showAuthOverlay();
+});
+
+/* ---------------------------------------------------------------
+   CLOUD PERSISTENCE — saves the parsed workbook to a Supabase
+   table scoped to the logged-in user, and loads it back on login
+   so returning users don't have to re-upload. Requires a
+   'workbook_data' table with RLS (see setup notes).
+--------------------------------------------------------------- */
+function setCloudStatus(text, isErr){
+  const el = document.getElementById('cloudStatus');
+  if (!el) return;
+  el.textContent = text || '';
+  el.style.color = isErr ? 'var(--bad)' : 'var(--good)';
+}
+
+let _saveDebounceTimer = null;
+function saveWorkbookToCloudDebounced(){
+  clearTimeout(_saveDebounceTimer);
+  _saveDebounceTimer = setTimeout(saveWorkbookToCloud, 800);
+}
+
+async function saveWorkbookToCloud(){
+  if (!supabaseClient || !currentUserId) return;
+  setCloudStatus('Saving to your account…', false);
+  const payload = { employees, qualityData, supervisorOf, reference };
+  const { error } = await supabaseClient
+    .from('workbook_data')
+    .upsert({
+      user_id: currentUserId,
+      file_name: currentFileName,
+      payload,
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'user_id' });
+
+  if (error){
+    console.error(error);
+    setCloudStatus('Could not save to your account — ' + error.message, true);
+  } else {
+    setCloudStatus('✓ Saved to your account', false);
+  }
+}
+
+async function loadWorkbookFromCloud(){
+  if (!supabaseClient || !currentUserId) return;
+  const { data, error } = await supabaseClient
+    .from('workbook_data')
+    .select('*')
+    .eq('user_id', currentUserId)
+    .maybeSingle();
+
+  if (error){
+    console.error(error);
+    return;
+  }
+  if (!data || !data.payload) return;
+
+  employees = data.payload.employees || {};
+  qualityData = data.payload.qualityData || {};
+  supervisorOf = data.payload.supervisorOf || {};
+  if (data.payload.reference) reference = data.payload.reference;
+  currentFileName = data.file_name || null;
+
+  renderReferenceTable();
+  renderAll();
+
+  const statusEl = document.getElementById('fileStatus');
+  if (statusEl && currentFileName){
+    statusEl.textContent = '✓ Loaded your saved workbook (' + currentFileName + ') — ' + Object.keys(employees).length + ' employee(s)';
+    statusEl.className = 'file-status';
+  }
+  setCloudStatus('✓ Synced from your account', false);
+}
+
 const DEFAULT_REFERENCE = {
   "OCN":                       { target: 12,   r5: 1.5385, r4: 1.2222, r3: 1.00, r2: 0.6667, r1: 0 },
   "Outreach":                  { target: 9.5,  r5: 1.50,   r4: 1.2317, r3: 1.00, r2: 0.7779, r1: 0 },
@@ -897,6 +1248,7 @@ function parseWorkbook(wb){
 
   renderReferenceTable();
   renderAll();
+  saveWorkbookToCloud();
 }
 
 function parseQualityTab(headers, rows){
@@ -1198,6 +1550,7 @@ function onRefFieldChange(e){
   e.target.classList.toggle('missing', reference[skill][field] === null || reference[skill][field] === undefined);
   renderReferenceTable();
   renderAll();
+  saveWorkbookToCloudDebounced();
 }
 
 function populateSupervisorFilter(keys, selectEl){
@@ -1535,6 +1888,7 @@ document.getElementById('chatInput').addEventListener('keydown', function(e){
 seedDefaults();
 renderReferenceTable();
 renderAll();
+checkExistingSession();
 </script>
 </body>
 </html>
