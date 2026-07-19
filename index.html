@@ -21,7 +21,7 @@
     --ink-soft: #5B5F6B;
     --ink-faint: #9A9C9C;
     --line: #DED4B9;
-    --good: #5E7F5A;
+    --good: #4A6B52;
     --warn: #B08328;
     --bad: #A9463A;
     --r-display: 'Fraunces', serif;
@@ -234,34 +234,6 @@
   }
   .par-empty{ font-size:13px; color: rgba(246,241,228,0.6); }
 
-  .stepper{
-    display:flex;
-    gap: 10px;
-    margin-bottom: 30px;
-    flex-wrap: wrap;
-  }
-  .step-pill{
-    display:flex;
-    align-items:baseline;
-    gap: 8px;
-    padding: 12px 18px;
-    border-radius: 24px;
-    border: 1px solid var(--line);
-    background: white;
-    font-family: var(--r-display);
-    font-weight: 600;
-    font-size: 14.5px;
-    color: var(--navy);
-    cursor: pointer;
-    transition: background .15s ease, border-color .15s ease;
-  }
-  .step-pill:hover{ border-color: var(--gold-deep); }
-  .step-pill.active{
-    background: var(--navy);
-    border-color: var(--navy);
-    color: var(--cream);
-  }
-  .step-pill.active .step-note{ color: rgba(246,241,228,0.7); }
   .step-note{
     font-family: var(--r-body);
     font-weight: 400;
@@ -284,6 +256,18 @@
     font-weight: 600;
     color: var(--navy);
     margin:0;
+    display:flex;
+    align-items:center;
+    gap: 10px;
+  }
+  .panel-title::before{
+    content: '';
+    display:inline-block;
+    width: 4px;
+    height: 20px;
+    background: var(--gold);
+    border-radius: 2px;
+    flex-shrink: 0;
   }
 
   .upload-card{
@@ -419,49 +403,66 @@
   }
 
   .emp-list{ border-top: 1px solid var(--line); }
+  .emp-list-head{
+    display:grid;
+    grid-template-columns: 20px 190px 1fr 148px 80px;
+    gap: 22px;
+    padding: 0 6px 8px;
+    font-family: var(--r-mono);
+    font-size: 10.5px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+  .emp-list-head span:last-child{ text-align:right; }
   .emp-card:nth-child(even){ background: var(--cream-2); }
   .emp-card:nth-child(even) .emp-row:hover{ background: #E7DFC5; }
   .emp-card{ border-bottom: 1px solid var(--line); }
   .emp-row{
-    display:flex;
+    display:grid;
+    grid-template-columns: 20px 190px 1fr 148px 80px;
     align-items:center;
     gap: 22px;
-    padding: 20px 6px;
+    padding: 16px 6px;
     cursor: pointer;
   }
   .emp-row:hover{ background: #FBF9F2; }
   .emp-name{
     font-family: var(--r-display);
     font-weight:600;
-    font-size: 16.5px;
+    font-size: 16px;
     color: var(--navy);
-    min-width: 150px;
   }
   .emp-skills{
-    flex:1;
     font-family: var(--r-mono);
-    font-size: 12.5px;
+    font-size: 12px;
     color: var(--ink-soft);
     line-height: 1.6;
+    font-variant-numeric: tabular-nums;
   }
   .emp-skills .miss{ color: var(--bad); }
 
-  .bar-track{
-    width: 140px;
-    height: 6px;
-    border-radius: 4px;
-    background: var(--cream-2);
-    overflow: hidden;
+  .rating-ladder{
+    width: 148px;
     flex-shrink: 0;
   }
-  .bar-fill{ height:100%; background: var(--gold-deep); border-radius: 4px; }
+  .rating-ladder svg{ display:block; width:100%; height:auto; }
+  .rating-ladder .rl-tick{ stroke: var(--line); stroke-width: 1; }
+  .rating-ladder .rl-baseline{ stroke: var(--line); stroke-width: 1.5; }
+  .rating-ladder .rl-fill{ stroke-width: 2; }
+  .rating-ladder .rl-num{
+    font-family: var(--r-mono);
+    font-size: 7.5px;
+    fill: var(--ink-faint);
+  }
 
-  .rate-wrap{ text-align:right; min-width: 66px; }
+  .rate-wrap{ text-align:right; }
   .rate-num{
     font-family: var(--r-mono);
     font-weight: 600;
     font-size: 19px;
     display:block;
+    font-variant-numeric: tabular-nums;
   }
   .rate-num.pass{ color: var(--good); }
   .rate-num.fail{ color: var(--bad); }
@@ -781,9 +782,16 @@
 
   @media (max-width: 640px){
     h1{ font-size: 26px; }
-    .emp-row{ flex-wrap:wrap; }
-    .emp-name{ min-width: 0; width:100%; }
-    .bar-track{ display:none; }
+    .emp-row{
+      grid-template-columns: 20px 1fr 80px;
+      grid-template-areas: "chev name rate" "chev skills rate";
+      row-gap: 4px;
+    }
+    .emp-row .chev{ grid-area: chev; }
+    .emp-row .emp-name{ grid-area: name; }
+    .emp-row .emp-skills{ grid-area: skills; }
+    .emp-row .rate-wrap{ grid-area: rate; }
+    .rating-ladder, .emp-list-head{ display:none; }
     .stat-huge{ font-size: 40px; }
     .chat-panel{ right: 12px; left: 12px; width: auto; bottom: 84px; }
     .chat-fab{ right: 16px; bottom: 16px; }
@@ -908,18 +916,6 @@
     </div>
   </div>
 
-  <nav class="stepper">
-    <a href="#step-workbook" class="step-pill" id="stepWorkbookPill">
-      <span>1 · Workbook</span><span class="step-note" id="stepWorkbookNote">Upload a file</span>
-    </a>
-    <a href="#step-targets" class="step-pill">
-      <span>2 · Targets</span><span class="step-note">Review threshold rules</span>
-    </a>
-    <a href="#step-results" class="step-pill">
-      <span>3 · Results</span><span class="step-note" id="stepResultsNote">0 employees</span>
-    </a>
-  </nav>
-
   <section id="step-workbook" class="panel">
     <div class="upload-card compact">
       <button class="template-btn" id="templateBtn" type="button" title="Download a blank template workbook">
@@ -976,6 +972,13 @@
           <option value="name-asc">Name — A to Z</option>
         </select>
       </div>
+    </div>
+    <div class="emp-list-head">
+      <span></span>
+      <span>Employee</span>
+      <span>Skills · Rating</span>
+      <span>Scale</span>
+      <span>Final Rate</span>
     </div>
     <div id="empList"></div>
   </section>
@@ -1603,9 +1606,42 @@ function employeeStatus(result){
   return isPass(result) ? 'pass' : 'review';
 }
 
+/* Signature element: a 1-5 rating ladder (echoes the underlying threshold
+   scale the whole calculation is built on) with a marker at the employee's
+   Final Production Rate, instead of a generic progress bar. */
+function ratingLadderSvg(rate, passes){
+  const w = 148, h = 28;
+  const x0 = 10, x1 = 138;
+  const val = rate === null || rate === undefined ? null : Math.max(1, Math.min(5, rate));
+  const xFor = v => x0 + ((v - 1) / 4) * (x1 - x0);
+  const color = passes ? 'var(--good)' : 'var(--bad)';
+
+  let ticks = '';
+  for (let v = 1; v <= 5; v++){
+    const tx = xFor(v);
+    ticks += `<line class="rl-tick" x1="${tx}" y1="12" x2="${tx}" y2="18"/>`;
+  }
+
+  const markerX = val !== null ? xFor(val) : x0;
+  const fill = val !== null
+    ? `<line class="rl-fill" x1="${x0}" y1="15" x2="${markerX}" y2="15" stroke="${color}"/>`
+    : '';
+  const marker = val !== null
+    ? `<circle cx="${markerX}" cy="15" r="3.4" fill="${color}" stroke="white" stroke-width="1.2"/>`
+    : '';
+
+  return `<svg viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg">
+    <line class="rl-baseline" x1="${x0}" y1="15" x2="${x1}" y2="15"/>
+    ${ticks}
+    ${fill}
+    ${marker}
+    <text class="rl-num" x="${x0}" y="27" text-anchor="middle">1</text>
+    <text class="rl-num" x="${x1}" y="27" text-anchor="middle">5</text>
+  </svg>`;
+}
+
 function renderAll(){
   renderSummary();
-  renderStepper();
   renderEmployees();
   renderParSidebar();
 }
@@ -1666,20 +1702,6 @@ function updateTeamGauge(pct){
   const valueLen = (clamped / 100) * totalLen;
   path.setAttribute('stroke-dasharray', valueLen.toFixed(1) + ' ' + totalLen);
   label.textContent = pct === null || pct === undefined ? 'No data' : clamped.toFixed(1) + '% of max';
-}
-
-function renderStepper(){
-  const names = Object.keys(employees);
-  const pill = document.getElementById('stepWorkbookPill');
-  const note = document.getElementById('stepWorkbookNote');
-  if (currentFileName){
-    pill.classList.add('active');
-    note.textContent = currentFileName + ' loaded';
-  } else {
-    pill.classList.remove('active');
-    note.textContent = 'Upload a file';
-  }
-  document.getElementById('stepResultsNote').textContent = names.length + ' employee' + (names.length===1?'':'s');
 }
 
 function renderParSidebar(){
@@ -1871,14 +1893,13 @@ function renderEmployees(){
       : `<span>No quality data for this employee</span>`;
 
     const passes = isPass(result);
-    const barPct = Math.max(0, Math.min(100, (result.finalRate || 0) / 5 * 100));
 
     card.innerHTML = `
       <div class="emp-row" data-toggle>
         <span class="chev">▸</span>
         <div class="emp-name">${escapeHtml(name)}</div>
         <div class="emp-skills">${skillText || '—'}</div>
-        <div class="bar-track"><div class="bar-fill" style="width:${barPct}%;"></div></div>
+        <div class="rating-ladder">${ratingLadderSvg(result.finalRate, passes)}</div>
         <div class="rate-wrap">
           <span class="rate-num ${passes ? 'pass' : 'fail'}">${result.finalRate ? result.finalRate.toFixed(2) : '—'}</span>
           <span class="rate-status ${passes ? 'pass' : 'fail'}">${passes ? 'Pass' : 'Fail'}</span>
