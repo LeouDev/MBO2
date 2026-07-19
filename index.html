@@ -2243,6 +2243,12 @@ function answerQuery(q){
     return "I don't have any data yet — upload a workbook first.";
   }
 
+  /* ---- methodology/explanation questions always go to the AI, which has
+     the full calculation rules — don't let local keyword rules (like a
+     name or "dpo") intercept these first ---- */
+  const isExplanationQuestion = /\bhow\b.*(calculat|work|formula|comput|figure|derive)|\bexplain\b|walk me through|walk.*through|why (does|is|would|did)|what is the formula|how come/.test(norm);
+  if (isExplanationQuestion) return null;
+
   /* ---- comparison: "compare X and Y" / "X vs Y" ---- */
   const compareSplit = norm.split(/\bvs\b|\bversus\b|\band\b/).map(s => s.trim()).filter(Boolean);
   if (/compare|vs\b|versus/.test(norm) && compareSplit.length >= 2){
