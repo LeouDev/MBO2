@@ -883,7 +883,7 @@
     <div class="summary-main">
       <div class="summary-top">
         <div class="summary-text">
-          <p class="stat-label">Team production rate</p>
+          <p class="stat-label">Team pass rate</p>
           <div class="stat-huge" id="teamRateStat">—</div>
           <p class="stat-sub" id="teamRateSub">Upload a workbook to see results.</p>
         </div>
@@ -1668,7 +1668,6 @@ function renderSummary(){
     : allKeys;
 
   let passCount = 0, reviewCount = 0, missingCount = 0;
-  let rateSum = 0, rateCount = 0;
 
   keys.forEach(name => {
     const result = computeEmployee(name);
@@ -1676,15 +1675,11 @@ function renderSummary(){
     if (status === 'pass') passCount++;
     else if (status === 'review') reviewCount++;
     else missingCount++;
-    if (result.finalRate !== null && result.finalRate !== undefined && !result.hasMissing){
-      rateSum += result.finalRate;
-      rateCount++;
-    }
   });
 
-  const teamRate = rateCount > 0 ? (rateSum / rateCount / 5 * 100) : null;
-  document.getElementById('teamRateStat').textContent = teamRate !== null ? teamRate.toFixed(1) + '%' : '—';
-  updateTeamGauge(teamRate);
+  const passRate = keys.length > 0 ? (passCount / keys.length * 100) : null;
+  document.getElementById('teamRateStat').textContent = passRate !== null ? passRate.toFixed(1) + '%' : '—';
+  updateTeamGauge(passRate);
   const scopeLabel = activeFilter ? ('under ' + activeFilter) : '';
   document.getElementById('teamRateSub').textContent = keys.length + ' employee' + (keys.length===1?'':'s') + (scopeLabel ? ' ' + scopeLabel : '') + ' · results based on the latest uploaded workbook';
   document.getElementById('passingCount').textContent = passCount;
@@ -1701,7 +1696,7 @@ function updateTeamGauge(pct){
   const clamped = pct === null || pct === undefined ? 0 : Math.max(0, Math.min(100, pct));
   const valueLen = (clamped / 100) * totalLen;
   path.setAttribute('stroke-dasharray', valueLen.toFixed(1) + ' ' + totalLen);
-  label.textContent = pct === null || pct === undefined ? 'No data' : clamped.toFixed(1) + '% of max';
+  label.textContent = pct === null || pct === undefined ? 'No data' : clamped.toFixed(1) + '% passing';
 }
 
 function renderParSidebar(){
