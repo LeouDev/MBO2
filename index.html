@@ -46,6 +46,18 @@
     padding: 40px 28px 90px;
   }
 
+  .top-banner{
+    background: #0F1B33;
+    color: var(--gold);
+    margin: -40px -28px 24px;
+    padding: 10px 28px;
+    font-family: var(--r-mono);
+    font-size: 11.5px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    text-align: center;
+  }
+
   header.top{
     display:flex;
     justify-content: space-between;
@@ -250,11 +262,10 @@
     background: white;
     border: 1px solid var(--line);
     border-radius: 8px;
-    padding: 24px 26px;
+    padding: 12px 16px;
     display:flex;
     align-items:center;
-    justify-content: space-between;
-    gap: 24px;
+    gap: 10px;
     flex-wrap: wrap;
   }
   .upload-left{ display:flex; align-items:center; gap:16px; }
@@ -270,19 +281,22 @@
     transition: background .15s ease, border-color .15s ease;
   }
   .template-btn:hover{ background: var(--cream-2); border-color: var(--gold-deep); }
-  .upload-icon{
-    width: 42px; height: 42px;
-    border-radius: 6px;
+  .upload-icon-btn{
+    position: relative;
+    overflow: hidden;
     background: var(--navy);
     color: var(--gold);
-    display:flex; align-items:center; justify-content:center;
-    font-family: var(--r-display);
-    font-weight:600;
-    font-size: 19px;
-    flex-shrink: 0;
+    border-color: var(--navy);
   }
-  .upload-text b{ display:block; font-size: 14.5px; color: var(--navy); margin-bottom: 2px;}
-  .upload-text span{ font-size: 12.5px; color: var(--ink-soft); }
+  .upload-icon-btn:hover{ background: var(--navy-3); }
+  .upload-icon-btn input[type=file]{ position:absolute; inset:0; opacity:0; cursor:pointer; }
+  .upload-status-inline{
+    display:flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-left: 4px;
+  }
+  .upload-status-inline .file-status{ margin-top:0; text-align:left; }
   .file-btn{
     position: relative;
     overflow: hidden;
@@ -580,6 +594,30 @@
   }
   .auth-submit:hover{ background: var(--navy-3); }
   .auth-submit:disabled{ opacity: .5; cursor: not-allowed; }
+  .auth-link{
+    display:block;
+    width:100%;
+    text-align:center;
+    background:none;
+    border:none;
+    margin-top:12px;
+    font-family: var(--r-body);
+    font-size: 12.5px;
+    color: var(--ink-soft);
+    text-decoration: underline;
+    cursor: pointer;
+  }
+  .auth-link:hover{ color: var(--navy); }
+  .auth-form select{
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    font-family: var(--r-body);
+    font-size: 14px;
+    color: var(--ink);
+    background: white;
+  }
 
   .account-bar{
     display:flex;
@@ -743,6 +781,7 @@
       <input type="password" id="loginPassword" autocomplete="current-password" required />
       <div class="auth-error" id="loginError"></div>
       <button type="submit" class="auth-submit">Log in</button>
+      <button type="button" class="auth-link" id="forgotPasswordLink">Forgot password?</button>
     </form>
 
     <form id="signupForm" class="auth-form" style="display:none;">
@@ -752,13 +791,42 @@
       <input type="password" id="signupPassword" autocomplete="new-password" required minlength="6" />
       <label>Confirm password</label>
       <input type="password" id="signupPassword2" autocomplete="new-password" required minlength="6" />
+      <label>Security question</label>
+      <select id="signupQuestion">
+        <option value="What was your first pet's name?">What was your first pet's name?</option>
+        <option value="What city were you born in?">What city were you born in?</option>
+        <option value="What was your first employer's name?">What was your first employer's name?</option>
+        <option value="What is your mother's maiden name?">What is your mother's maiden name?</option>
+        <option value="What was the name of your first school?">What was the name of your first school?</option>
+      </select>
+      <label>Answer</label>
+      <input type="text" id="signupAnswer" autocomplete="off" required />
       <div class="auth-error" id="signupError"></div>
       <button type="submit" class="auth-submit">Create account</button>
+    </form>
+
+    <form id="forgotForm" class="auth-form" style="display:none;">
+      <label>Username</label>
+      <input type="text" id="forgotUsername" autocomplete="username" required />
+      <div id="forgotQuestionWrap" style="display:none;">
+        <label id="forgotQuestionLabel">Security question</label>
+        <input type="text" id="forgotAnswer" autocomplete="off" placeholder="Your answer" />
+        <label>New password</label>
+        <input type="password" id="forgotNewPassword" autocomplete="new-password" minlength="6" />
+        <label>Confirm new password</label>
+        <input type="password" id="forgotNewPassword2" autocomplete="new-password" minlength="6" />
+      </div>
+      <div class="auth-error" id="forgotError"></div>
+      <div class="auth-error" id="forgotSuccess" style="color:var(--good);"></div>
+      <button type="button" class="auth-submit" id="forgotContinueBtn">Continue</button>
+      <button type="button" class="auth-link" id="backToLoginLink">Back to log in</button>
     </form>
   </div>
 </div>
 
 <div class="wrap" id="appRoot" style="display:none;">
+
+  <div class="top-banner">Cluster Leounatics · Pharmacy PA Operations</div>
 
   <header class="top">
     <div>
@@ -813,22 +881,15 @@
   </nav>
 
   <section id="step-workbook" class="panel">
-    <div class="upload-card">
-      <div class="upload-left">
-        <button class="template-btn" id="templateBtn" type="button" title="Download a blank template workbook">
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-        </button>
-        <div class="upload-icon">Σ</div>
-        <div class="upload-text">
-          <b>Skill performance workbook</b>
-          <span>Each tab = a skill (Supervisor, EID, Employee Name, AHT/Case Rate, ProdHrs). Employees are grouped by EID. Plus a "Quality" tab for DPU/DPO.</span>
-        </div>
-      </div>
-      <div>
-        <button class="file-btn" type="button">
-          Choose file
-          <input type="file" id="fileInput" accept=".xlsx,.xls" />
-        </button>
+    <div class="upload-card compact">
+      <button class="template-btn" id="templateBtn" type="button" title="Download a blank template workbook">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+      </button>
+      <button class="template-btn upload-icon-btn" id="uploadIconBtn" type="button" title="Upload skill performance workbook — each tab = a skill (Supervisor, EID, Employee Name, AHT/Case Rate, ProdHrs), grouped by EID, plus a Quality tab for DPU/DPO">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+        <input type="file" id="fileInput" accept=".xlsx,.xls" />
+      </button>
+      <div class="upload-status-inline">
         <div id="fileStatus" class="file-status"></div>
         <div id="cloudStatus" class="file-status"></div>
       </div>
@@ -1007,10 +1068,13 @@ document.getElementById('signupForm').addEventListener('submit', async function(
   const username = document.getElementById('signupUsername').value.trim();
   const password = document.getElementById('signupPassword').value;
   const password2 = document.getElementById('signupPassword2').value;
+  const question = document.getElementById('signupQuestion').value;
+  const answer = document.getElementById('signupAnswer').value.trim();
 
   if (!username || username.length < 3){ setAuthError('signupError', 'Username must be at least 3 characters.'); return; }
   if (password.length < 6){ setAuthError('signupError', 'Password must be at least 6 characters.'); return; }
   if (password !== password2){ setAuthError('signupError', 'Passwords don\'t match.'); return; }
+  if (!answer){ setAuthError('signupError', 'Enter an answer to your security question — you\'ll need it if you forget your password.'); return; }
 
   const submitBtn = e.target.querySelector('.auth-submit');
   submitBtn.disabled = true;
@@ -1019,9 +1083,9 @@ document.getElementById('signupForm').addEventListener('submit', async function(
     password,
     options: { data: { username } }
   });
-  submitBtn.disabled = false;
 
   if (error){
+    submitBtn.disabled = false;
     if (/already registered|already exists/i.test(error.message)){
       setAuthError('signupError', 'That username is already taken.');
     } else {
@@ -1029,11 +1093,113 @@ document.getElementById('signupForm').addEventListener('submit', async function(
     }
     return;
   }
+
   if (data.session){
+    const { error: rpcErr } = await supabaseClient.rpc('set_security_answer', {
+      p_question: question,
+      p_answer: answer
+    });
+    submitBtn.disabled = false;
+    if (rpcErr) console.error('Could not save security question:', rpcErr);
     showApp(username, data.user.id);
   } else {
+    submitBtn.disabled = false;
     setAuthError('signupError', 'Account created — log in below.');
     document.getElementById('tabLogin').click();
+  }
+});
+
+/* ---------------------------------------------------------------
+   FORGOT PASSWORD — security question flow
+--------------------------------------------------------------- */
+let forgotStep = 1;
+
+function resetForgotForm(){
+  forgotStep = 1;
+  document.getElementById('forgotUsername').value = '';
+  document.getElementById('forgotAnswer').value = '';
+  document.getElementById('forgotNewPassword').value = '';
+  document.getElementById('forgotNewPassword2').value = '';
+  document.getElementById('forgotQuestionWrap').style.display = 'none';
+  document.getElementById('forgotUsername').disabled = false;
+  document.getElementById('forgotContinueBtn').textContent = 'Continue';
+  setAuthError('forgotError', '');
+  setAuthError('forgotSuccess', '');
+}
+
+document.getElementById('forgotPasswordLink').addEventListener('click', function(){
+  document.getElementById('loginForm').style.display = 'none';
+  document.getElementById('signupForm').style.display = 'none';
+  document.querySelector('.auth-tabs').style.display = 'none';
+  resetForgotForm();
+  document.getElementById('forgotForm').style.display = 'block';
+});
+
+document.getElementById('backToLoginLink').addEventListener('click', function(){
+  document.getElementById('forgotForm').style.display = 'none';
+  document.querySelector('.auth-tabs').style.display = 'flex';
+  document.getElementById('tabLogin').click();
+});
+
+document.getElementById('forgotContinueBtn').addEventListener('click', async function(){
+  setAuthError('forgotError', '');
+  setAuthError('forgotSuccess', '');
+  if (!supabaseClient){
+    setAuthError('forgotError', 'Supabase isn\'t configured yet.');
+    return;
+  }
+
+  if (forgotStep === 1){
+    const username = document.getElementById('forgotUsername').value.trim();
+    if (!username){ setAuthError('forgotError', 'Enter your username.'); return; }
+
+    this.disabled = true;
+    const { data: question, error } = await supabaseClient.rpc('get_security_question', { p_username: username });
+    this.disabled = false;
+
+    if (error){ setAuthError('forgotError', 'Something went wrong — try again.'); return; }
+    if (!question){ setAuthError('forgotError', 'No account or security question found for that username.'); return; }
+
+    document.getElementById('forgotQuestionLabel').textContent = question;
+    document.getElementById('forgotQuestionWrap').style.display = 'block';
+    document.getElementById('forgotUsername').disabled = true;
+    this.textContent = 'Reset password';
+    forgotStep = 2;
+    return;
+  }
+
+  // Step 2: submit answer + new password to the Edge Function
+  const username = document.getElementById('forgotUsername').value.trim();
+  const answer = document.getElementById('forgotAnswer').value.trim();
+  const newPassword = document.getElementById('forgotNewPassword').value;
+  const newPassword2 = document.getElementById('forgotNewPassword2').value;
+
+  if (!answer){ setAuthError('forgotError', 'Enter your answer.'); return; }
+  if (newPassword.length < 6){ setAuthError('forgotError', 'New password must be at least 6 characters.'); return; }
+  if (newPassword !== newPassword2){ setAuthError('forgotError', 'Passwords don\'t match.'); return; }
+
+  this.disabled = true;
+  try {
+    const res = await fetch(SUPABASE_URL + '/functions/v1/reset-password', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + SUPABASE_ANON_KEY
+      },
+      body: JSON.stringify({ username, answer, newPassword })
+    });
+    const result = await res.json();
+    this.disabled = false;
+
+    if (!res.ok){
+      setAuthError('forgotError', result.error || 'Could not reset password.');
+      return;
+    }
+    setAuthError('forgotSuccess', '✓ Password updated — you can log in now.');
+    setTimeout(() => document.getElementById('backToLoginLink').click(), 1500);
+  } catch (err){
+    this.disabled = false;
+    setAuthError('forgotError', 'Could not reach the reset service — check that the Edge Function is deployed.');
   }
 });
 
@@ -1111,6 +1277,7 @@ async function loadWorkbookFromCloud(){
     statusEl.className = 'file-status';
   }
   setCloudStatus('✓ Synced from your account', false);
+  saveWorkbookToCloudDebounced();
 }
 
 const DEFAULT_REFERENCE = {
@@ -1145,6 +1312,11 @@ let currentFileName = null;
 
 function normalizeKey(s){
   return String(s || "").trim().toLowerCase().replace(/\s+/g,' ');
+}
+
+const LOWER_IS_BETTER_SKILLS = ['partd_phones', 'uhc_west', 'gen_phones'];
+function isLowerBetterSkill(skillName){
+  return LOWER_IS_BETTER_SKILLS.includes(normalizeKey(skillName).replace(/\s+/g, '_'));
 }
 
 document.getElementById('fileInput').addEventListener('change', function(e){
@@ -1344,8 +1516,12 @@ function computeEmployee(empKey){
 
     let ratio = null, ratingInfo = null, weight = 0;
     if (!missingRef && !missingActual && ref.target > 0){
-      ratio = rowData.actual / ref.target;
-      ratingInfo = computeSkillRating(ratio, ref);
+      if (isLowerBetterSkill(skillName)){
+        ratio = rowData.actual > 0 ? (ref.target / rowData.actual) : null;
+      } else {
+        ratio = rowData.actual / ref.target;
+      }
+      if (ratio !== null) ratingInfo = computeSkillRating(ratio, ref);
     }
     if (!missingHours && totalHours > 0){
       weight = rowData.hours / totalHours;
@@ -1532,7 +1708,7 @@ function renderReferenceTable(){
     body.appendChild(tr);
   });
 
-  body.querySelectorAll('input[data-skill]').forEach(input => {
+  body.querySelectorAll('input[data-skill][data-field]').forEach(input => {
     input.addEventListener('input', onRefFieldChange);
   });
 }
