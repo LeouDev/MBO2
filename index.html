@@ -376,6 +376,8 @@
   }
 
   .emp-list{ border-top: 1px solid var(--line); }
+  .emp-card:nth-child(even){ background: var(--cream-2); }
+  .emp-card:nth-child(even) .emp-row:hover{ background: #E7DFC5; }
   .emp-card{ border-bottom: 1px solid var(--line); }
   .emp-row{
     display:flex;
@@ -500,12 +502,125 @@
   @media (max-width: 860px){
     .summary-grid{ grid-template-columns: 1fr; }
   }
+  /* ---------- Data assistant chat ---------- */
+  .chat-fab{
+    position: fixed;
+    right: 24px;
+    bottom: 24px;
+    width: 54px; height: 54px;
+    border-radius: 50%;
+    background: var(--navy);
+    color: var(--gold);
+    border: none;
+    display:flex; align-items:center; justify-content:center;
+    cursor: pointer;
+    box-shadow: 0 6px 18px rgba(15,27,51,0.28);
+    z-index: 40;
+    transition: background .15s ease, transform .15s ease;
+  }
+  .chat-fab:hover{ background: var(--navy-3); transform: translateY(-1px); }
+
+  .chat-panel{
+    position: fixed;
+    right: 24px;
+    bottom: 90px;
+    width: 340px;
+    max-width: calc(100vw - 48px);
+    height: 440px;
+    max-height: calc(100vh - 140px);
+    background: white;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    box-shadow: 0 12px 32px rgba(15,27,51,0.22);
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+    z-index: 41;
+  }
+  .chat-panel.open{ display:flex; }
+
+  .chat-head{
+    background: var(--navy);
+    color: var(--cream);
+    padding: 14px 16px;
+    display:flex;
+    align-items:flex-start;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .chat-head b{ font-family: var(--r-display); font-size: 15px; display:block; }
+  .chat-head span{ font-family: var(--r-body); font-size: 11px; color: rgba(246,241,228,0.65); display:block; margin-top:2px; }
+  .chat-close{
+    background: none; border: none; color: rgba(246,241,228,0.75);
+    font-size: 14px; cursor: pointer; padding: 2px 4px; flex-shrink:0;
+  }
+  .chat-close:hover{ color: var(--cream); }
+
+  .chat-body{
+    flex:1;
+    overflow-y: auto;
+    padding: 14px 14px 6px;
+    display:flex;
+    flex-direction: column;
+    gap: 10px;
+    background: var(--cream);
+  }
+  .chat-msg{
+    max-width: 88%;
+    padding: 9px 12px;
+    border-radius: 10px;
+    font-size: 13px;
+    line-height: 1.45;
+  }
+  .chat-msg.bot{
+    background: white;
+    border: 1px solid var(--line);
+    color: var(--ink);
+    align-self: flex-start;
+  }
+  .chat-msg.user{
+    background: var(--navy);
+    color: var(--cream);
+    align-self: flex-end;
+  }
+
+  .chat-input-row{
+    display:flex;
+    gap: 8px;
+    padding: 10px;
+    border-top: 1px solid var(--line);
+    background: white;
+  }
+  .chat-input-row input{
+    flex:1;
+    padding: 9px 12px;
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    font-family: var(--r-body);
+    font-size: 13px;
+    color: var(--ink);
+  }
+  .chat-input-row button{
+    background: var(--navy);
+    color: var(--cream);
+    border: none;
+    padding: 9px 16px;
+    border-radius: 20px;
+    font-family: var(--r-body);
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .chat-input-row button:hover{ background: var(--navy-3); }
+
   @media (max-width: 640px){
     h1{ font-size: 26px; }
     .emp-row{ flex-wrap:wrap; }
     .emp-name{ min-width: 0; width:100%; }
     .bar-track{ display:none; }
     .stat-huge{ font-size: 40px; }
+    .chat-panel{ right: 12px; left: 12px; width: auto; bottom: 84px; }
+    .chat-fab{ right: 16px; bottom: 16px; }
   }
 </style>
 </head>
@@ -611,6 +726,9 @@
       <h2 class="panel-title">Employee performance</h2>
       <div class="toolbar">
         <input class="search-input" id="searchInput" type="text" placeholder="Search employee" />
+        <select class="sort-select" id="supervisorFilter">
+          <option value="">All supervisors</option>
+        </select>
         <select class="sort-select" id="sortSelect">
           <option value="rate-desc">High to low</option>
           <option value="rate-asc">Low to high</option>
@@ -622,6 +740,25 @@
   </section>
 
   <footer>Prod_calculation · client-side only — nothing you upload leaves this browser.</footer>
+
+  <button class="chat-fab" id="chatFab" title="Ask about this data">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+  </button>
+
+  <div class="chat-panel" id="chatPanel">
+    <div class="chat-head">
+      <div>
+        <b>Data assistant</b>
+        <span>Answers using the workbook you loaded — runs locally, no external AI call</span>
+      </div>
+      <button class="chat-close" id="chatClose">✕</button>
+    </div>
+    <div class="chat-body" id="chatBody"></div>
+    <div class="chat-input-row">
+      <input type="text" id="chatInput" placeholder="e.g. who has the lowest rate?" />
+      <button id="chatSend">Ask</button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -976,7 +1113,17 @@ function renderParSidebar(){
     if (isPass(result)) bySupervisor[supervisor].pass += 1;
   });
 
-  const supervisors = Object.keys(bySupervisor).sort((a,b) => a.localeCompare(b));
+  const filterEl = document.getElementById('supervisorFilter');
+  const activeFilter = filterEl ? filterEl.value : '';
+
+  let supervisors = Object.keys(bySupervisor).sort((a,b) => a.localeCompare(b));
+  if (activeFilter) supervisors = supervisors.filter(s => s === activeFilter);
+
+  if (supervisors.length === 0){
+    listEl.innerHTML = '<div class="par-empty">No data for that supervisor.</div>';
+    return;
+  }
+
   listEl.innerHTML = supervisors.map(sup => {
     const { total, pass } = bySupervisor[sup];
     const pct = total > 0 ? (pass/total*100) : 0;
@@ -1053,10 +1200,25 @@ function onRefFieldChange(e){
   renderAll();
 }
 
+function populateSupervisorFilter(keys, selectEl){
+  const supervisors = Array.from(new Set(keys.map(k => supervisorOf[k] || 'Unassigned'))).sort((a,b)=>a.localeCompare(b));
+  const current = selectEl.value;
+  const optionsHtml = ['<option value="">All supervisors</option>']
+    .concat(supervisors.map(s => `<option value="${escapeAttr(s)}">${escapeHtml(s)}</option>`));
+  const newHtml = optionsHtml.join('');
+  if (selectEl.dataset.optionsHtml !== newHtml){
+    selectEl.innerHTML = newHtml;
+    selectEl.dataset.optionsHtml = newHtml;
+    if (supervisors.includes(current)) selectEl.value = current;
+  }
+}
+
 function renderEmployees(){
   const listEl = document.getElementById('empList');
   const searchTerm = normalizeKey(document.getElementById('searchInput').value);
   const sortMode = document.getElementById('sortSelect').value;
+  const supervisorFilterEl = document.getElementById('supervisorFilter');
+  const supervisorFilter = supervisorFilterEl.value;
 
   let keys = Object.keys(employees);
   if (keys.length === 0){
@@ -1064,8 +1226,13 @@ function renderEmployees(){
     return;
   }
 
-  const computed = keys.map(k => ({ key: k, result: computeEmployee(k) }));
+  populateSupervisorFilter(keys, supervisorFilterEl);
+
+  const computed = keys.map(k => ({ key: k, result: computeEmployee(k), supervisor: supervisorOf[k] || 'Unassigned' }));
   let filtered = computed.filter(c => normalizeKey(c.result.name).includes(searchTerm));
+  if (supervisorFilter){
+    filtered = filtered.filter(c => c.supervisor === supervisorFilter);
+  }
 
   filtered.sort((a,b) => {
     if (sortMode === 'rate-desc') return b.result.finalRate - a.result.finalRate;
@@ -1230,6 +1397,10 @@ function escapeAttr(str){ return escapeHtml(str); }
 
 document.getElementById('searchInput').addEventListener('input', renderEmployees);
 document.getElementById('sortSelect').addEventListener('change', renderEmployees);
+document.getElementById('supervisorFilter').addEventListener('change', function(){
+  renderEmployees();
+  renderParSidebar();
+});
 document.getElementById('exportBtn').addEventListener('click', exportReport);
 document.getElementById('templateBtn').addEventListener('click', generateTemplate);
 document.getElementById('refBlockHead').addEventListener('click', function(){
@@ -1238,6 +1409,127 @@ document.getElementById('refBlockHead').addEventListener('click', function(){
   const isOpen = wrap.style.display !== 'none';
   wrap.style.display = isOpen ? 'none' : 'block';
   chevron.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(90deg)';
+});
+
+/* ---------------------------------------------------------------
+   DATA ASSISTANT — answers questions about the loaded workbook
+   using local pattern matching over the already-computed results.
+   This does not call any external AI service.
+--------------------------------------------------------------- */
+function appendChatMessage(text, who){
+  const body = document.getElementById('chatBody');
+  const msg = document.createElement('div');
+  msg.className = 'chat-msg ' + (who === 'user' ? 'user' : 'bot');
+  msg.textContent = text;
+  body.appendChild(msg);
+  body.scrollTop = body.scrollHeight;
+}
+
+function allEmployeeResults(){
+  return Object.keys(employees).map(k => ({
+    key: k,
+    result: computeEmployee(k),
+    supervisor: supervisorOf[k] || 'Unassigned'
+  }));
+}
+
+function answerQuery(q){
+  const norm = normalizeKey(q);
+  const rows = allEmployeeResults();
+
+  if (rows.length === 0){
+    return "I don't have any data yet — upload a workbook first.";
+  }
+
+  const nameMatch = rows.find(r => r.result.name && norm.includes(normalizeKey(r.result.name)));
+  if (nameMatch){
+    const r = nameMatch.result;
+    const passes = isPass(r);
+    const parts = [`${r.name}'s Final Production Rate is ${r.finalRate.toFixed(2)} (${passes ? 'Pass' : 'Fail'}).`];
+    if (r.dpu !== null) parts.push(`DPU is ${(r.dpu*100).toFixed(1)}%.`);
+    if (r.dpo !== null) parts.push(`DPO is ${(r.dpo*100).toFixed(1)}%.`);
+    parts.push(`Supervisor: ${nameMatch.supervisor}.`);
+    if (r.rows.length){
+      parts.push('Skills: ' + r.rows.map(s => `${s.skillName} ${s.ratingInfo ? s.ratingInfo.rating.toFixed(2) : '—'}`).join(', ') + '.');
+    }
+    return parts.join(' ');
+  }
+
+  const supervisors = Array.from(new Set(rows.map(r => r.supervisor)));
+  const supMatch = supervisors.find(s => norm.includes(normalizeKey(s)));
+  if (supMatch && /par|pass rate|supervisor/.test(norm)){
+    const team = rows.filter(r => r.supervisor === supMatch);
+    const passCount = team.filter(r => isPass(r.result)).length;
+    const pct = team.length ? (passCount/team.length*100) : 0;
+    return `${supMatch} supervises ${team.length} employee(s) — PAR is ${pct.toFixed(0)}% (${passCount}/${team.length} passing).`;
+  }
+
+  if (/highest|top|best/.test(norm)){
+    const sorted = [...rows].sort((a,b) => b.result.finalRate - a.result.finalRate);
+    const top = sorted[0];
+    return `${top.result.name} has the highest Final Production Rate at ${top.result.finalRate.toFixed(2)}.`;
+  }
+
+  if (/lowest|worst|bottom/.test(norm)){
+    const sorted = [...rows].sort((a,b) => a.result.finalRate - b.result.finalRate);
+    const bottom = sorted[0];
+    return `${bottom.result.name} has the lowest Final Production Rate at ${bottom.result.finalRate.toFixed(2)}.`;
+  }
+
+  if (/how many.*pass|passing/.test(norm)){
+    const c = rows.filter(r => employeeStatus(r.result) === 'pass').length;
+    return `${c} of ${rows.length} employees are currently passing.`;
+  }
+
+  if (/how many.*fail|failing|needs review/.test(norm)){
+    const c = rows.filter(r => employeeStatus(r.result) === 'review').length;
+    return `${c} employee(s) are in Needs Review (below the pass criteria).`;
+  }
+
+  if (/missing/.test(norm)){
+    const missing = rows.filter(r => employeeStatus(r.result) === 'missing');
+    return missing.length
+      ? `${missing.length} employee(s) have missing data: ${missing.map(r => r.result.name).join(', ')}.`
+      : 'No employees currently have missing data.';
+  }
+
+  if (/average|team rate|overall/.test(norm)){
+    const valid = rows.filter(r => !r.result.hasMissing);
+    const avg = valid.length ? valid.reduce((s,r) => s + r.result.finalRate, 0) / valid.length : 0;
+    return `The average Final Production Rate is ${avg.toFixed(2)} across ${valid.length} employee(s) with complete data.`;
+  }
+
+  if (/how many employee|headcount|total/.test(norm)){
+    return `There are ${rows.length} employee(s) in the loaded workbook.`;
+  }
+
+  return "I can answer things like: \"who has the lowest rate\", \"how many are passing\", \"what's Jennifer's DPO\", or \"PAR for Lea\". Try rephrasing, or ask about a specific employee or supervisor by name.";
+}
+
+function sendChatMessage(){
+  const input = document.getElementById('chatInput');
+  const text = input.value.trim();
+  if (!text) return;
+  appendChatMessage(text, 'user');
+  input.value = '';
+  const reply = answerQuery(text);
+  setTimeout(() => appendChatMessage(reply, 'bot'), 150);
+}
+
+document.getElementById('chatFab').addEventListener('click', function(){
+  const panel = document.getElementById('chatPanel');
+  const opening = !panel.classList.contains('open');
+  panel.classList.toggle('open');
+  if (opening && document.getElementById('chatBody').children.length === 0){
+    appendChatMessage("Hi! Ask me about the loaded workbook — e.g. \"who has the lowest rate\", \"how many are passing\", or a specific employee's name.", 'bot');
+  }
+});
+document.getElementById('chatClose').addEventListener('click', function(){
+  document.getElementById('chatPanel').classList.remove('open');
+});
+document.getElementById('chatSend').addEventListener('click', sendChatMessage);
+document.getElementById('chatInput').addEventListener('keydown', function(e){
+  if (e.key === 'Enter') sendChatMessage();
 });
 
 seedDefaults();
