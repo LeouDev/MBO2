@@ -46,24 +46,68 @@
     padding: 40px 28px 90px;
   }
 
-  .side-graphic{
+  .side-panel{
     position: fixed;
-    left: 4vw;
+    left: 3vw;
     top: 50%;
-    width: 130px;
+    transform: translateY(-50%);
+    width: 190px;
+    z-index: 5;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 26px;
+  }
+  .side-graphic{
+    width: 110px;
     height: auto;
     color: var(--navy);
     opacity: 0.16;
     pointer-events: none;
-    z-index: 0;
     animation: sideGraphicFloat 7s ease-in-out infinite;
   }
   @keyframes sideGraphicFloat{
-    0%, 100% { transform: translateY(-50%); }
-    50% { transform: translateY(calc(-50% - 14px)); }
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-14px); }
   }
-  @media (max-width: 1480px){
-    .side-graphic{ display:none; }
+  .side-filters-card{
+    width: 100%;
+    background: white;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 16px;
+    box-shadow: 0 8px 22px rgba(156,122,52,0.06);
+  }
+  .side-filters-title{
+    font-family: var(--r-mono);
+    font-size: 10.5px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    margin: 0 0 12px;
+  }
+  .side-filters-card label{
+    display:block;
+    font-family: var(--r-mono);
+    font-size: 9.5px;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin: 10px 0 4px;
+  }
+  .side-filters-card label:first-of-type{ margin-top: 0; }
+  .side-filters-card select{
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    font-family: var(--r-body);
+    font-size: 12.5px;
+    color: var(--ink);
+    background: white;
+  }
+  @media (max-width: 1680px){
+    .side-panel{ display:none; }
   }
 
   .top-banner{
@@ -213,6 +257,17 @@
     font-size: 26px;
     color: var(--navy);
   }
+  .stat-box-clickable{
+    cursor: pointer;
+    border-radius: 6px;
+    padding-top: 6px;
+    padding-bottom: 6px;
+    margin: -6px 0;
+    transition: background .15s ease;
+  }
+  .stat-box-clickable:hover{ background: rgba(198,161,91,0.08); }
+  .stat-box-clickable.active{ background: rgba(198,161,91,0.14); }
+  .stat-box-clickable.active .stat-box-num{ color: var(--gold-deep); }
 
   .supervisor-card{
     position: relative;
@@ -969,18 +1024,29 @@
 
 <div class="wrap" id="appRoot" style="display:none;">
 
-  <svg class="side-graphic" viewBox="0 0 160 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-    <line x1="14" y1="10" x2="14" y2="170" stroke="currentColor" stroke-width="1.5"/>
-    <line x1="14" y1="170" x2="150" y2="170" stroke="currentColor" stroke-width="1.5"/>
-    <polyline points="14,140 42,120 70,150 98,80 126,95 150,40" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-    <circle cx="14" cy="140" r="4" fill="currentColor"/>
-    <circle cx="42" cy="120" r="4" fill="currentColor"/>
-    <circle cx="70" cy="150" r="4" fill="currentColor"/>
-    <circle cx="98" cy="80" r="4" fill="currentColor"/>
-    <circle cx="126" cy="95" r="4" fill="currentColor"/>
-    <circle cx="150" cy="40" r="5" fill="var(--gold)" stroke="currentColor" stroke-width="1.5"/>
-  </svg>
+  <div class="side-panel">
+    <svg class="side-graphic" viewBox="0 0 160 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <line x1="14" y1="10" x2="14" y2="170" stroke="currentColor" stroke-width="1.5"/>
+      <line x1="14" y1="170" x2="150" y2="170" stroke="currentColor" stroke-width="1.5"/>
+      <polyline points="14,140 42,120 70,150 98,80 126,95 150,40" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="14" cy="140" r="4" fill="currentColor"/>
+      <circle cx="42" cy="120" r="4" fill="currentColor"/>
+      <circle cx="70" cy="150" r="4" fill="currentColor"/>
+      <circle cx="98" cy="80" r="4" fill="currentColor"/>
+      <circle cx="126" cy="95" r="4" fill="currentColor"/>
+      <circle cx="150" cy="40" r="5" fill="var(--gold)" stroke="currentColor" stroke-width="1.5"/>
+    </svg>
 
+    <div class="side-filters-card">
+      <p class="side-filters-title">Filters</p>
+      <label for="filterSupervisor">Supervisor</label>
+      <select id="filterSupervisor"><option value="">All</option></select>
+      <label for="filterSkill">Skill</label>
+      <select id="filterSkill"><option value="">All</option></select>
+      <label for="filterManager">Manager</label>
+      <select id="filterManager"><option value="">All</option></select>
+    </div>
+  </div>
 
   <div class="top-banner">Cluster Leou | LAC</div>
 
@@ -1015,15 +1081,15 @@
         </div>
       </div>
       <div class="stat-row">
-        <div class="stat-box">
+        <div class="stat-box stat-box-clickable" id="statBoxPass" data-status="pass">
           <p class="stat-box-label">Passing</p>
           <div class="stat-box-num" id="passingCount">0</div>
         </div>
-        <div class="stat-box">
+        <div class="stat-box stat-box-clickable" id="statBoxReview" data-status="review">
           <p class="stat-box-label">Needs review</p>
           <div class="stat-box-num" id="reviewCount">0</div>
         </div>
-        <div class="stat-box">
+        <div class="stat-box stat-box-clickable" id="statBoxMissing" data-status="missing">
           <p class="stat-box-label">Missing data</p>
           <div class="stat-box-num" id="missingCount">0</div>
         </div>
@@ -1040,7 +1106,7 @@
       <button class="template-btn" id="templateBtn" type="button" title="Download a blank template workbook">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
       </button>
-      <button class="template-btn upload-icon-btn" id="uploadIconBtn" type="button" title="Upload skill performance workbook — each tab = a skill (Supervisor, EID, Employee Name, AHT/Case Rate, ProdHrs), grouped by EID, plus a Quality tab for DPU/DPO">
+      <button class="template-btn upload-icon-btn" id="uploadIconBtn" type="button" title="Upload skill performance workbook — each tab = a skill (Manager, Supervisor, EID, Employee Name, AHT/Case Rate, ProdHrs), grouped by EID, plus a Quality tab with a Skill column for per-skill DPU/DPO">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
         <input type="file" id="fileInput" accept=".xlsx,.xls" />
       </button>
@@ -1082,9 +1148,6 @@
       <h2 class="panel-title">Employee performance</h2>
       <div class="toolbar">
         <input class="search-input" id="searchInput" type="text" placeholder="Search employee" />
-        <select class="sort-select" id="supervisorFilter">
-          <option value="">All supervisors</option>
-        </select>
         <select class="sort-select" id="sortSelect">
           <option value="rate-desc">High to low</option>
           <option value="rate-asc">Low to high</option>
@@ -1460,10 +1523,10 @@ async function loadWorkbookFromCloud(){
 }
 
 const DEFAULT_REFERENCE = {
-  "OCN":                       { target: 14.5, r5: 1.5385, r4: 1.2222, r3: 1.00, r2: 0.6667, r1: 0 },
-  "Outreach":                  { target: 9.5,  r5: 1.50,   r4: 1.2317, r3: 1.00, r2: 0.7779, r1: 0 },
+  "OCN":                       { target: 14.5, attr: 34, r5: 1.5385, r4: 1.2222, r3: 1.00, r2: 0.6667, r1: 0 },
+  "Outreach":                  { target: 9.5,  attr: 14, r5: 1.50,   r4: 1.2317, r3: 1.00, r2: 0.7779, r1: 0 },
   "B vs D":                    { target: null, r5: 1.45,   r4: 1.2601, r3: 1.00, r2: 0.75,   r1: 0 },
-  "EDITS":                     { target: 8,    r5: 1.6663, r4: 1.4326, r3: 1.00, r2: 0.6838, r1: 0 },
+  "EDITS":                     { target: 8,    attr: 8, r5: 1.6663, r4: 1.4326, r3: 1.00, r2: 0.6838, r1: 0 },
   "C&S Pharma Admin":          { target: null, r5: 1.5862, r4: 1.30,   r3: 1.00, r2: 0.7138, r1: 0 },
   "C&S Appeals Verification":  { target: null, r5: 1.4178, r4: 1.2356, r3: 1.00, r2: 0.7733, r1: 0 },
   "AV Commercial":             { target: null, r5: 1.4178, r4: 1.2356, r3: 1.00, r2: 0.7733, r1: 0 },
@@ -1472,11 +1535,11 @@ const DEFAULT_REFERENCE = {
   "A&M - Cancellation SP":     { target: null, r5: 1.6667, r4: 1.4158, r3: 1.00, r2: 0.75,   r1: 0 },
   "Outreach Denial":           { target: null, r5: 1.38,   r4: 1.19,   r3: 1.00, r2: 0.75,   r1: 0 },
   "OBD Phone":                 { target: null, r5: 1.3587, r4: 1.1921, r3: 1.00, r2: 0.9239, r1: 0 },
-  "PartD_Phones":              { target: 500,  r5: 1.1788, r4: 1.0892, r3: 1.00, r2: 0.85,   r1: 0 },
-  "Gen_Phones":                { target: 515,  r5: 1.2675, r4: 1.0775, r3: 1.00, r2: 0.9349, r1: 0 },
-  "Fax":                       { target: 11,   r5: 1.2727, r4: 1.1682, r3: 1.00, r2: 0.8955, r1: 0 },
-  "GLP_1":                     { target: 15,   r5: 1.2733, r4: 1.1680, r3: 1.00, r2: 0.8950, r1: 0 },
-  "UHC_west":                  { target: 485,  r5: 1.1788, r4: 1.0891, r3: 1.00, r2: 0.8549, r1: 0 },
+  "PartD_Phones":              { target: 500,  attr: 28, r5: 1.1788, r4: 1.0892, r3: 1.00, r2: 0.85,   r1: 0 },
+  "Gen_Phones":                { target: 515,  attr: 28, r5: 1.2675, r4: 1.0775, r3: 1.00, r2: 0.9349, r1: 0 },
+  "Fax":                       { target: 11,   attr: 25, r5: 1.2727, r4: 1.1682, r3: 1.00, r2: 0.8955, r1: 0 },
+  "GLP_1":                     { target: 15,   attr: 25, r5: 1.2733, r4: 1.1680, r3: 1.00, r2: 0.8950, r1: 0 },
+  "UHC_west":                  { target: 485,  attr: 28, r5: 1.1788, r4: 1.0891, r3: 1.00, r2: 0.8549, r1: 0 },
   "Clinical Appeals Phone":    { target: null, r5: 1.1788, r4: 1.0891, r3: 1.00, r2: 0.8549, r1: 0 },
   "Misroutes":                 { target: null, r5: 1.2741, r4: 1.1675, r3: 1.00, r2: 0.8934, r1: 0 }
 };
@@ -1485,9 +1548,57 @@ let reference = {};
 let sheetsData = {};
 let employees = {};
 let qualityData = {};
-let attributesPerAudit = 23;
+const DEFAULT_ATTRIBUTES_FALLBACK = 23; // used only when a Quality row's Skill isn't recognized
 let supervisorOf = {};
+let managerOf = {};
 let currentFileName = null;
+let statusFilter = null; // null | 'pass' | 'review' | 'missing'
+
+function getActiveFilters(){
+  return {
+    supervisor: document.getElementById('filterSupervisor')?.value || '',
+    skill: document.getElementById('filterSkill')?.value || '',
+    manager: document.getElementById('filterManager')?.value || ''
+  };
+}
+
+function employeePassesSideFilters(key, result){
+  const f = getActiveFilters();
+  if (f.supervisor && (supervisorOf[key] || 'Unassigned') !== f.supervisor) return false;
+  if (f.manager && (managerOf[key] || 'Unassigned') !== f.manager) return false;
+  if (f.skill && !result.rows.some(r => r.skillName === f.skill)) return false;
+  if (statusFilter && employeeStatus(result) !== statusFilter) return false;
+  return true;
+}
+
+function populateFilterSelect(selectEl, values, allLabel){
+  const current = selectEl.value;
+  const sorted = Array.from(new Set(values)).sort((a,b)=>a.localeCompare(b));
+  const optionsHtml = [`<option value="">${allLabel}</option>`]
+    .concat(sorted.map(v => `<option value="${escapeAttr(v)}">${escapeHtml(v)}</option>`));
+  const newHtml = optionsHtml.join('');
+  if (selectEl.dataset.optionsHtml !== newHtml){
+    selectEl.innerHTML = newHtml;
+    selectEl.dataset.optionsHtml = newHtml;
+    if (sorted.includes(current)) selectEl.value = current;
+  }
+}
+
+function populateSideFilters(keys){
+  const supervisorEl = document.getElementById('filterSupervisor');
+  const skillEl = document.getElementById('filterSkill');
+  const managerEl = document.getElementById('filterManager');
+  if (!supervisorEl || !skillEl || !managerEl) return;
+
+  populateFilterSelect(supervisorEl, keys.map(k => supervisorOf[k] || 'Unassigned'), 'All');
+  populateFilterSelect(managerEl, keys.map(k => managerOf[k] || 'Unassigned'), 'All');
+
+  const skillSet = new Set();
+  keys.forEach(k => {
+    Object.keys(employees[k].skills).forEach(s => skillSet.add(s));
+  });
+  populateFilterSelect(skillEl, Array.from(skillSet), 'All');
+}
 
 function normalizeKey(s){
   return String(s || "").trim().toLowerCase().replace(/\s+/g,' ');
@@ -1540,6 +1651,7 @@ function parseWorkbook(wb){
   employees = {};
   qualityData = {};
   supervisorOf = {};
+  managerOf = {};
 
   wb.SheetNames.forEach(tabName => {
     const sheet = wb.Sheets[tabName];
@@ -1558,6 +1670,7 @@ function parseWorkbook(wb){
     const actualIdx     = headerIndex(headers, ['aht','case rate','actual']);
     const hoursIdx      = headerIndex(headers, ['hour','hrs']);
     const supervisorIdx = headerIndex(headers, ['supervisor']);
+    const managerIdx    = headerIndex(headers, ['manager']);
 
     if (nameIdx === -1) return;
 
@@ -1593,6 +1706,12 @@ function parseWorkbook(wb){
           supervisorOf[empKey] = String(supervisorVal).trim();
         }
       }
+      if (managerIdx !== -1){
+        const managerVal = row[managerIdx];
+        if (managerVal && String(managerVal).trim() !== ''){
+          managerOf[empKey] = String(managerVal).trim();
+        }
+      }
     }
     sheetsData[skillName] = list;
   });
@@ -1606,6 +1725,8 @@ function parseQualityTab(headers, rows){
   const nameIdx       = headerIndex(headers, ['employee name','name'], ['supervisor']);
   const eidIdx        = headerIndex(headers, ['eid']);
   const supervisorIdx = headerIndex(headers, ['supervisor']);
+  const managerIdx    = headerIndex(headers, ['manager']);
+  const skillIdx       = headerIndex(headers, ['skill']);
   const auditsIdx     = headerIndex(headers, ['audit']);
   const under100Idx   = headerIndex(headers, ['<100','under 100','below 100','under100','below100']);
   const markdownIdx   = headerIndex(headers, ['markdown']);
@@ -1626,17 +1747,28 @@ function parseQualityTab(headers, rows){
     if (supervisorVal && String(supervisorVal).trim() !== ''){
       supervisorOf[empKey] = String(supervisorVal).trim();
     }
+    const managerVal = managerIdx !== -1 ? row[managerIdx] : '';
+    if (managerVal && String(managerVal).trim() !== ''){
+      managerOf[empKey] = String(managerVal).trim();
+    }
     const audits = auditsIdx !== -1 ? parseFloat(row[auditsIdx]) : NaN;
     const under100 = under100Idx !== -1 ? parseFloat(row[under100Idx]) : NaN;
     const markdown = markdownIdx !== -1 ? parseFloat(row[markdownIdx]) : NaN;
+    const skillVal = skillIdx !== -1 ? String(row[skillIdx] || '').trim() : '';
 
     if (!qualityData[empKey]){
-      qualityData[empKey] = { audits: 0, under100: 0, markdown: 0, hasData: false };
+      qualityData[empKey] = { audits: 0, under100: 0, markdown: 0, totalAttributes: 0, hasData: false };
     }
     const q = qualityData[empKey];
     if (!isNaN(audits)) { q.audits += audits; q.hasData = true; }
     if (!isNaN(under100)) { q.under100 += under100; q.hasData = true; }
     if (!isNaN(markdown)) { q.markdown += markdown; q.hasData = true; }
+
+    if (!isNaN(audits)){
+      const skillRef = skillVal ? reference[findObjKeyCaseInsensitive(reference, skillVal) || skillVal] : null;
+      const attrPerAudit = (skillRef && skillRef.attr !== null && skillRef.attr !== undefined) ? skillRef.attr : DEFAULT_ATTRIBUTES_FALLBACK;
+      q.totalAttributes += attrPerAudit * audits;
+    }
   }
 }
 
@@ -1732,9 +1864,8 @@ function computeEmployee(empKey){
   let dpu = null, dpo = null;
   if (q && q.hasData){
     if (q.audits > 0) dpu = (q.audits - q.under100) / q.audits;
-    if (attributesPerAudit > 0 && q.audits > 0){
-      const totalAttributes = attributesPerAudit * q.audits;
-      dpo = (totalAttributes - q.markdown) / totalAttributes;
+    if (q.totalAttributes > 0){
+      dpo = (q.totalAttributes - q.markdown) / q.totalAttributes;
     }
   }
 
@@ -1809,11 +1940,13 @@ function renderSummary(){
     return;
   }
 
-  const filterEl = document.getElementById('supervisorFilter');
-  const activeFilter = filterEl ? filterEl.value : '';
-  const keys = activeFilter
-    ? allKeys.filter(k => (supervisorOf[k] || 'Unassigned') === activeFilter)
-    : allKeys;
+  const f = getActiveFilters();
+  const keys = allKeys.filter(k => {
+    if (f.supervisor && (supervisorOf[k] || 'Unassigned') !== f.supervisor) return false;
+    if (f.manager && (managerOf[k] || 'Unassigned') !== f.manager) return false;
+    if (f.skill && !Object.keys(employees[k].skills).includes(f.skill)) return false;
+    return true;
+  });
 
   let passCount = 0, reviewCount = 0, missingCount = 0;
 
@@ -1828,12 +1961,20 @@ function renderSummary(){
   const passRate = keys.length > 0 ? (passCount / keys.length * 100) : null;
   document.getElementById('teamRateStat').textContent = passRate !== null ? passRate.toFixed(1) + '%' : '—';
   updateTeamGauge(passRate);
-  const scopeLabel = activeFilter ? ('under ' + activeFilter) : '';
-  document.getElementById('teamRateSub').textContent = keys.length + ' employee' + (keys.length===1?'':'s') + (scopeLabel ? ' ' + scopeLabel : '') + ' · results based on the latest uploaded workbook';
+  const scopeParts = [];
+  if (f.supervisor) scopeParts.push('under ' + f.supervisor);
+  if (f.manager) scopeParts.push('managed by ' + f.manager);
+  if (f.skill) scopeParts.push('on ' + f.skill);
+  const scopeLabel = scopeParts.length ? ' ' + scopeParts.join(', ') : '';
+  document.getElementById('teamRateSub').textContent = keys.length + ' employee' + (keys.length===1?'':'s') + scopeLabel + ' · results based on the latest uploaded workbook';
   document.getElementById('passingCount').textContent = passCount;
   document.getElementById('reviewCount').textContent = reviewCount;
   document.getElementById('missingCount').textContent = missingCount;
   exportBtn.disabled = false;
+
+  document.getElementById('statBoxPass')?.classList.toggle('active', statusFilter === 'pass');
+  document.getElementById('statBoxReview')?.classList.toggle('active', statusFilter === 'review');
+  document.getElementById('statBoxMissing')?.classList.toggle('active', statusFilter === 'missing');
 }
 
 function updateTeamGauge(pct){
@@ -1857,8 +1998,17 @@ function renderParSidebar(){
     return;
   }
 
+  const f = getActiveFilters();
+  const filteredNames = names.filter(k => {
+    const result = computeEmployee(k);
+    if (f.manager && (managerOf[k] || 'Unassigned') !== f.manager) return false;
+    if (f.skill && !result.rows.some(r => r.skillName === f.skill)) return false;
+    if (statusFilter && employeeStatus(result) !== statusFilter) return false;
+    return true;
+  });
+
   const bySupervisor = {};
-  names.forEach(name => {
+  filteredNames.forEach(name => {
     const supervisor = supervisorOf[name] || 'Unassigned';
     const result = computeEmployee(name);
     if (!bySupervisor[supervisor]) bySupervisor[supervisor] = { total: 0, pass: 0 };
@@ -1866,14 +2016,11 @@ function renderParSidebar(){
     if (isPass(result)) bySupervisor[supervisor].pass += 1;
   });
 
-  const filterEl = document.getElementById('supervisorFilter');
-  const activeFilter = filterEl ? filterEl.value : '';
-
   let supervisors = Object.keys(bySupervisor).sort((a,b) => a.localeCompare(b));
-  if (activeFilter) supervisors = supervisors.filter(s => s === activeFilter);
+  if (f.supervisor) supervisors = supervisors.filter(s => s === f.supervisor);
 
   if (supervisors.length === 0){
-    listEl.innerHTML = '<div class="par-empty">No data for that supervisor.</div>';
+    listEl.innerHTML = '<div class="par-empty">No data for that selection.</div>';
     return;
   }
 
@@ -1954,25 +2101,10 @@ function onRefFieldChange(e){
   saveWorkbookToCloudDebounced();
 }
 
-function populateSupervisorFilter(keys, selectEl){
-  const supervisors = Array.from(new Set(keys.map(k => supervisorOf[k] || 'Unassigned'))).sort((a,b)=>a.localeCompare(b));
-  const current = selectEl.value;
-  const optionsHtml = ['<option value="">All supervisors</option>']
-    .concat(supervisors.map(s => `<option value="${escapeAttr(s)}">${escapeHtml(s)}</option>`));
-  const newHtml = optionsHtml.join('');
-  if (selectEl.dataset.optionsHtml !== newHtml){
-    selectEl.innerHTML = newHtml;
-    selectEl.dataset.optionsHtml = newHtml;
-    if (supervisors.includes(current)) selectEl.value = current;
-  }
-}
-
 function renderEmployees(){
   const listEl = document.getElementById('empList');
   const searchTerm = normalizeKey(document.getElementById('searchInput').value);
   const sortMode = document.getElementById('sortSelect').value;
-  const supervisorFilterEl = document.getElementById('supervisorFilter');
-  const supervisorFilter = supervisorFilterEl.value;
 
   let keys = Object.keys(employees);
   if (keys.length === 0){
@@ -1980,13 +2112,11 @@ function renderEmployees(){
     return;
   }
 
-  populateSupervisorFilter(keys, supervisorFilterEl);
+  populateSideFilters(keys);
 
   const computed = keys.map(k => ({ key: k, result: computeEmployee(k), supervisor: supervisorOf[k] || 'Unassigned' }));
   let filtered = computed.filter(c => normalizeKey(c.result.name).includes(searchTerm));
-  if (supervisorFilter){
-    filtered = filtered.filter(c => c.supervisor === supervisorFilter);
-  }
+  filtered = filtered.filter(c => employeePassesSideFilters(c.key, c.result));
 
   filtered.sort((a,b) => {
     if (sortMode === 'rate-desc') return b.result.finalRate - a.result.finalRate;
@@ -2031,9 +2161,11 @@ function renderEmployees(){
 
     const dpuTxt = result.dpu !== null ? (result.dpu*100).toFixed(2) + '%' : '—';
     const dpoTxt = result.dpo !== null ? (result.dpo*100).toFixed(2) + '%' : '—';
+    const manager = managerOf[key];
+    const managerLine = manager ? `<span>Manager: ${escapeHtml(manager)}</span>` : '';
     const qualityLine = result.quality && result.quality.hasData
-      ? `<span>Audits: ${result.quality.audits} · &lt;100: ${result.quality.under100} · Markdown: ${result.quality.markdown}</span><span>DPU: <b style="color:var(--navy)">${dpuTxt}</b> &nbsp; DPO: <b style="color:var(--navy)">${dpoTxt}</b></span>`
-      : `<span>No quality data for this employee</span>`;
+      ? `${managerLine}<span>Audits: ${result.quality.audits} · &lt;100: ${result.quality.under100} · Markdown: ${result.quality.markdown}</span><span>DPU: <b style="color:var(--navy)">${dpuTxt}</b> &nbsp; DPO: <b style="color:var(--navy)">${dpoTxt}</b></span>`
+      : `${managerLine}<span>No quality data for this employee</span>`;
 
     const passes = isPass(result);
 
@@ -2081,8 +2213,8 @@ function sanitizeSheetName(name){
 
 function generateTemplate(){
   const wb = XLSX.utils.book_new();
-  const skillHeaders = ['Supervisor', 'EID', 'Employee Name', 'AHT / Case Rate', 'ProdHrs'];
-  const qualityHeaders = ['Supervisor', 'EID', 'Employee Name', '# of Audits', 'Quality Score', '# of Markdown', '# of <100'];
+  const skillHeaders = ['Manager', 'Supervisor', 'EID', 'Employee Name', 'AHT / Case Rate', 'ProdHrs'];
+  const qualityHeaders = ['Manager', 'Supervisor', 'EID', 'Employee Name', 'Skill', '# of Audits', 'Quality Score', '# of Markdown', '# of <100'];
 
   const qualityWs = XLSX.utils.aoa_to_sheet([qualityHeaders]);
   XLSX.utils.book_append_sheet(wb, qualityWs, 'Quality');
@@ -2106,7 +2238,7 @@ function exportReport(){
   const keys = Object.keys(employees);
   if (keys.length === 0) return;
 
-  const header = ['Employee','EID','Supervisor','Final Production Rate','DPU','DPO','Status'];
+  const header = ['Employee','EID','Manager','Supervisor','Final Production Rate','DPU','DPO','Status'];
   const lines = [header.join(',')];
 
   keys.map(k => computeEmployee(k))
@@ -2117,6 +2249,7 @@ function exportReport(){
       const row = [
         csvEscape(result.name),
         csvEscape(result.eid),
+        csvEscape(managerOf[result.eid] || ''),
         csvEscape(supervisorOf[result.eid] || 'Unassigned'),
         result.finalRate !== null ? result.finalRate.toFixed(3) : '',
         result.dpu !== null ? (result.dpu*100).toFixed(2)+'%' : '',
@@ -2150,10 +2283,23 @@ function escapeAttr(str){ return escapeHtml(str); }
 
 document.getElementById('searchInput').addEventListener('input', renderEmployees);
 document.getElementById('sortSelect').addEventListener('change', renderEmployees);
-document.getElementById('supervisorFilter').addEventListener('change', function(){
-  renderSummary();
-  renderEmployees();
-  renderParSidebar();
+['filterSupervisor','filterSkill','filterManager'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('change', function(){
+    renderSummary();
+    renderEmployees();
+    renderParSidebar();
+  });
+});
+['statBoxPass','statBoxReview','statBoxMissing'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('click', function(){
+    const status = el.getAttribute('data-status');
+    statusFilter = (statusFilter === status) ? null : status;
+    renderSummary();
+    renderEmployees();
+    renderParSidebar();
+  });
 });
 document.getElementById('exportBtn').addEventListener('click', exportReport);
 document.getElementById('templateBtn').addEventListener('click', generateTemplate);
@@ -2370,6 +2516,7 @@ function answerQuery(q){
     const parts = [`${r.name}'s Final Production Rate is ${r.finalRate.toFixed(2)} (${passes ? 'Pass' : 'Fail'}).`];
     if (r.dpu !== null) parts.push(`DPU is ${(r.dpu*100).toFixed(1)}%.`);
     if (r.dpo !== null) parts.push(`DPO is ${(r.dpo*100).toFixed(1)}%.`);
+    if (managerOf[nameMatch.key]) parts.push(`Manager: ${managerOf[nameMatch.key]}.`);
     parts.push(`Supervisor: ${nameMatch.supervisor}.`);
     if (r.rows.length){
       parts.push('Skills: ' + r.rows.map(s => `${s.skillName} ${s.ratingInfo ? s.ratingInfo.rating.toFixed(2) : '—'}`).join(', ') + '.');
@@ -2462,7 +2609,7 @@ function buildDataContext(){
   const lines = rows.slice(0, MAX_ROWS).map(r => {
     const passes = isPass(r.result);
     const skills = r.result.rows.map(s => s.skillName + ' ' + (s.ratingInfo ? s.ratingInfo.rating.toFixed(2) : '—')).join(', ');
-    return `${r.result.name} | EID:${r.key} | Supervisor:${r.supervisor} | FinalRate:${r.result.finalRate.toFixed(2)} | Status:${passes ? 'Pass' : 'Fail'} | DPU:${r.result.dpu !== null ? (r.result.dpu*100).toFixed(1)+'%' : 'N/A'} | DPO:${r.result.dpo !== null ? (r.result.dpo*100).toFixed(1)+'%' : 'N/A'} | Skills: ${skills}`;
+    return `${r.result.name} | EID:${r.key} | Manager:${managerOf[r.key] || 'N/A'} | Supervisor:${r.supervisor} | FinalRate:${r.result.finalRate.toFixed(2)} | Status:${passes ? 'Pass' : 'Fail'} | DPU:${r.result.dpu !== null ? (r.result.dpu*100).toFixed(1)+'%' : 'N/A'} | DPO:${r.result.dpo !== null ? (r.result.dpo*100).toFixed(1)+'%' : 'N/A'} | Skills: ${skills}`;
   });
   let out = lines.join('\n');
   if (rows.length > MAX_ROWS) out += `\n…and ${rows.length - MAX_ROWS} more employee(s) not shown (dataset truncated for length).`;
