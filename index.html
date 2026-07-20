@@ -227,7 +227,28 @@
     line-height: 1;
     letter-spacing: 0.01em;
     color: var(--navy);
+    margin-bottom: 0;
+  }
+  .stat-huge-row{
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
     margin-bottom: 10px;
+    flex-wrap: wrap;
+  }
+  .mini-metrics{
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-family: var(--r-mono);
+    font-size: 12px;
+    color: var(--ink-soft);
+  }
+  .mini-metrics span{ white-space: nowrap; }
+  .mini-metrics b{
+    color: var(--navy);
+    font-weight: 600;
+    margin-left: 4px;
   }
   .stat-sub{
     font-size: 13.5px;
@@ -1185,7 +1206,13 @@
           <div class="summary-top">
             <div class="summary-text">
               <p class="stat-label">Team pass rate</p>
-              <div class="stat-huge" id="teamRateStat">—</div>
+              <div class="stat-huge-row">
+                <div class="stat-huge" id="teamRateStat">—</div>
+                <div class="mini-metrics">
+                  <span>DPU <b id="teamDpuStat">—</b></span>
+                  <span>DPO <b id="teamDpoStat">—</b></span>
+                </div>
+              </div>
               <p class="stat-sub" id="teamRateSub">Upload a workbook to see results.</p>
             </div>
             <div class="gauge-wrap">
@@ -2121,6 +2148,8 @@ function renderSummary(){
     document.getElementById('passingCount').textContent = '0';
     document.getElementById('reviewCount').textContent = '0';
     document.getElementById('missingCount').textContent = '0';
+    document.getElementById('teamDpuStat').textContent = '—';
+    document.getElementById('teamDpoStat').textContent = '—';
     exportBtn.disabled = true;
     updateTeamGauge(null);
     return;
@@ -2135,6 +2164,7 @@ function renderSummary(){
   });
 
   let passCount = 0, reviewCount = 0, missingCount = 0;
+  let dpuSum = 0, dpuCount = 0, dpoSum = 0, dpoCount = 0;
 
   keys.forEach(name => {
     const result = computeEmployee(name);
@@ -2142,11 +2172,15 @@ function renderSummary(){
     if (status === 'pass') passCount++;
     else if (status === 'review') reviewCount++;
     else missingCount++;
+    if (result.dpu !== null){ dpuSum += result.dpu; dpuCount++; }
+    if (result.dpo !== null){ dpoSum += result.dpo; dpoCount++; }
   });
 
   const passRate = keys.length > 0 ? (passCount / keys.length * 100) : null;
   document.getElementById('teamRateStat').textContent = passRate !== null ? passRate.toFixed(1) + '%' : '—';
   updateTeamGauge(passRate);
+  document.getElementById('teamDpuStat').textContent = dpuCount > 0 ? (dpuSum / dpuCount * 100).toFixed(1) + '%' : '—';
+  document.getElementById('teamDpoStat').textContent = dpoCount > 0 ? (dpoSum / dpoCount * 100).toFixed(1) + '%' : '—';
   const scopeParts = [];
   if (f.supervisor) scopeParts.push('under ' + f.supervisor);
   if (f.manager) scopeParts.push('managed by ' + f.manager);
