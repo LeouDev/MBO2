@@ -2675,7 +2675,8 @@ function allEmployeeResults(){
   return Object.keys(employees).map(k => ({
     key: k,
     result: computeEmployee(k),
-    supervisor: supervisorOf[k] || 'Unassigned'
+    supervisor: supervisorOf[k] || 'Unassigned',
+    manager: managerOf[k] || 'Unassigned'
   }));
 }
 
@@ -2879,6 +2880,24 @@ function answerQuery(q){
     return `Supervisors (${supervisors.length}):\n` + counts.map(c => `${c.s}: ${c.n} employee(s)`).join('\n');
   }
 
+  /* ---- manager queries (mirrors supervisor queries above) ---- */
+  const managers = Array.from(new Set(rows.map(r => r.manager)));
+  const mgrMatch = managers.find(m => norm.includes(normalizeKey(m)));
+  if (mgrMatch){
+    const team = rows.filter(r => r.manager === mgrMatch);
+    if (/list|who|team|roster/.test(norm)){
+      return `${mgrMatch}'s team (${team.length}):\n` + team.map(formatEmployeeLine).join('\n');
+    }
+    const passCount = team.filter(r => isPass(r.result)).length;
+    const pct = team.length ? (passCount/team.length*100) : 0;
+    return `${mgrMatch} manages ${team.length} employee(s) — PAR is ${pct.toFixed(0)}% (${passCount}/${team.length} passing).`;
+  }
+  if (/list.*manager|managers\b/.test(norm) && !/for|under/.test(norm)){
+    const counts = managers.map(m => ({ m, n: rows.filter(r => r.manager === m).length }));
+    counts.sort((a,b) => b.n - a.n);
+    return `Managers (${managers.length}):\n` + counts.map(c => `${c.m}: ${c.n} employee(s)`).join('\n');
+  }
+
   /* ---- listing failing/passing/missing by name ---- */
   if (/list|who/.test(norm) && /fail|review/.test(norm)){
     const list = rows.filter(r => employeeStatus(r.result) === 'review');
@@ -2939,6 +2958,20 @@ function answerQuery(q){
    AI FALLBACK — when no local rule matches, ask Gemini via a
    Supabase Edge Function (which holds the API key server-side).
 --------------------------------------------------------------- */
+function buildSkillReferenceContext(){
+  const skillNames = Object.keys(reference).filter(s => {
+    const r = reference[s];
+    return r.target !== null && r.target !== undefined && r.r3 !== null && r.r5 !== null && r.r2 !== null;
+  }).sort((a,b) => a.localeCompare(b));
+  if (skillNames.length === 0) return '';
+  return skillNames.map(s => {
+    const r = reference[s];
+    const lowerNote = isLowerBetterSkill(s) ? ' [lower Actual is better for this skill]' : '';
+    const r4Txt = (r.r4 !== null && r.r4 !== undefined) ? (r.r4*100).toFixed(2) + '%' : 'N/A';
+    return `${s}: Target=${r.target}${lowerNote}, Rating5=${(r.r5*100).toFixed(2)}%, Rating4=${r4Txt}, Rating3=100%, Rating2=${(r.r2*100).toFixed(2)}%, Rating1=0%`;
+  }).join('\n');
+}
+
 function buildDataContext(){
   const rows = allEmployeeResults();
   if (rows.length === 0) return '';
@@ -3006,7 +3039,8 @@ function sendChatMessage(){
   }
 
   const thinkingId = appendChatMessage('Thinking…', 'bot');
-  const context = buildDataContext();
+  const context = 'SKILL TARGETS & THRESHOLDS:\n' + (buildSkillReferenceContext() || '(none configured)') +
+    '\n\nEMPLOYEE DATA:\n' + buildDataContext();
   askAI(text, context).then(result => {
     removeChatMessage(thinkingId);
     if (result.error){
