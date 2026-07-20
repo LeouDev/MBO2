@@ -46,30 +46,58 @@
     padding: 40px 28px 90px;
   }
 
-  .side-panel{
-    position: fixed;
-    left: 3vw;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 190px;
-    z-index: 5;
+  .dashboard-layout{
+    display: grid;
+    grid-template-columns: 190px minmax(0, 1fr);
+    gap: 24px;
+    align-items: start;
+    transition: grid-template-columns .2s ease;
+  }
+  .dashboard-layout.sidebar-collapsed{
+    grid-template-columns: 44px minmax(0, 1fr);
+  }
+  .dashboard-sidebar{
+    position: sticky;
+    top: 20px;
     display: flex;
     flex-direction: column;
-    align-items: center;
-    gap: 26px;
+    gap: 14px;
   }
+  .sidebar-toggle{
+    align-self: flex-end;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    border: 1px solid var(--line);
+    background: white;
+    color: var(--ink-soft);
+    cursor: pointer;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .sidebar-toggle:hover{ border-color: var(--gold-deep); color: var(--navy); }
+  .dashboard-layout.sidebar-collapsed .sidebar-content{ display: none; }
+  .dashboard-layout.sidebar-collapsed .sidebar-toggle{ align-self: center; }
+
   .side-graphic{
-    width: 110px;
+    width: 100%;
+    max-width: 110px;
     height: auto;
     color: var(--navy);
     opacity: 0.16;
     pointer-events: none;
+    margin: 0 auto;
+    display: block;
     animation: sideGraphicFloat 7s ease-in-out infinite;
   }
   @keyframes sideGraphicFloat{
     0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-14px); }
+    50% { transform: translateY(-10px); }
   }
+  .sidebar-content{ display: flex; flex-direction: column; gap: 14px; }
   .side-filters-card{
     width: 100%;
     background: white;
@@ -106,8 +134,9 @@
     color: var(--ink);
     background: white;
   }
-  @media (max-width: 1680px){
-    .side-panel{ display:none; }
+  @media (max-width: 900px){
+    .dashboard-layout{ grid-template-columns: 1fr; }
+    .dashboard-sidebar{ position: static; }
   }
 
   .top-banner{
@@ -355,6 +384,87 @@
     background: var(--gold);
     border-radius: 2px;
     flex-shrink: 0;
+  }
+
+  .comparison-controls{
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 18px;
+  }
+  .toggle-group{
+    display: flex;
+    background: var(--cream-2);
+    border-radius: 20px;
+    padding: 3px;
+    gap: 2px;
+  }
+  .toggle-btn{
+    border: none;
+    background: none;
+    padding: 7px 14px;
+    border-radius: 16px;
+    font-family: var(--r-body);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink-soft);
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .toggle-btn.active{ background: var(--navy); color: var(--cream); }
+  .comparison-chart{
+    display: flex;
+    align-items: flex-end;
+    gap: 14px;
+    height: 200px;
+    padding: 0 4px 16px;
+    border-bottom: 1px solid var(--line);
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x proximity;
+  }
+  .comparison-bar-col{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    flex: 0 0 auto;
+    width: 78px;
+    height: 100%;
+    scroll-snap-align: start;
+  }
+  .comparison-bar-value{
+    font-family: var(--r-mono);
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--navy);
+    margin-bottom: 4px;
+    white-space: nowrap;
+  }
+  .comparison-bar{
+    width: 100%;
+    max-width: 40px;
+    background: var(--gold-deep);
+    border-radius: 4px 4px 0 0;
+    min-height: 2px;
+  }
+  .comparison-bar-label{
+    margin-top: 8px;
+    font-family: var(--r-mono);
+    font-size: 10px;
+    color: var(--ink-soft);
+    text-align: center;
+    max-width: 70px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .comparison-empty{
+    padding: 30px;
+    text-align: center;
+    color: var(--ink-soft);
+    font-size: 13px;
   }
 
   .upload-card{
@@ -1024,30 +1134,6 @@
 
 <div class="wrap" id="appRoot" style="display:none;">
 
-  <div class="side-panel">
-    <svg class="side-graphic" viewBox="0 0 160 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-      <line x1="14" y1="10" x2="14" y2="170" stroke="currentColor" stroke-width="1.5"/>
-      <line x1="14" y1="170" x2="150" y2="170" stroke="currentColor" stroke-width="1.5"/>
-      <polyline points="14,140 42,120 70,150 98,80 126,95 150,40" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-      <circle cx="14" cy="140" r="4" fill="currentColor"/>
-      <circle cx="42" cy="120" r="4" fill="currentColor"/>
-      <circle cx="70" cy="150" r="4" fill="currentColor"/>
-      <circle cx="98" cy="80" r="4" fill="currentColor"/>
-      <circle cx="126" cy="95" r="4" fill="currentColor"/>
-      <circle cx="150" cy="40" r="5" fill="var(--gold)" stroke="currentColor" stroke-width="1.5"/>
-    </svg>
-
-    <div class="side-filters-card">
-      <p class="side-filters-title">Filters</p>
-      <label for="filterSupervisor">Supervisor</label>
-      <select id="filterSupervisor"><option value="">All</option></select>
-      <label for="filterSkill">Skill</label>
-      <select id="filterSkill"><option value="">All</option></select>
-      <label for="filterManager">Manager</label>
-      <select id="filterManager"><option value="">All</option></select>
-    </div>
-  </div>
-
   <div class="top-banner">Cluster Leou | LAC</div>
 
   <header class="top">
@@ -1064,108 +1150,163 @@
     </div>
   </header>
 
-  <div class="summary-grid">
-    <div class="summary-main">
-      <div class="summary-top">
-        <div class="summary-text">
-          <p class="stat-label">Team pass rate</p>
-          <div class="stat-huge" id="teamRateStat">—</div>
-          <p class="stat-sub" id="teamRateSub">Upload a workbook to see results.</p>
-        </div>
-        <div class="gauge-wrap">
-          <svg id="teamGaugeSvg" viewBox="0 0 200 116" xmlns="http://www.w3.org/2000/svg">
-            <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="var(--cream-2)" stroke-width="16" stroke-linecap="round"/>
-            <path id="teamGaugeValue" d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="var(--gold-deep)" stroke-width="16" stroke-linecap="round" stroke-dasharray="0 251.3"/>
-          </svg>
-          <div class="gauge-label" id="teamGaugeLabel">—</div>
-        </div>
-      </div>
-      <div class="stat-row">
-        <div class="stat-box stat-box-clickable" id="statBoxPass" data-status="pass">
-          <p class="stat-box-label">Passing</p>
-          <div class="stat-box-num" id="passingCount">0</div>
-        </div>
-        <div class="stat-box stat-box-clickable" id="statBoxReview" data-status="review">
-          <p class="stat-box-label">Needs review</p>
-          <div class="stat-box-num" id="reviewCount">0</div>
-        </div>
-        <div class="stat-box stat-box-clickable" id="statBoxMissing" data-status="missing">
-          <p class="stat-box-label">Missing data</p>
-          <div class="stat-box-num" id="missingCount">0</div>
+  <div class="dashboard-layout" id="dashboardLayout">
+    <aside class="dashboard-sidebar">
+      <button class="sidebar-toggle" id="sidebarToggle" title="Collapse filters">‹</button>
+      <div class="sidebar-content" id="sidebarContent">
+        <svg class="side-graphic" viewBox="0 0 160 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <line x1="14" y1="10" x2="14" y2="170" stroke="currentColor" stroke-width="1.5"/>
+          <line x1="14" y1="170" x2="150" y2="170" stroke="currentColor" stroke-width="1.5"/>
+          <polyline points="14,140 42,120 70,150 98,80 126,95 150,40" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="14" cy="140" r="4" fill="currentColor"/>
+          <circle cx="42" cy="120" r="4" fill="currentColor"/>
+          <circle cx="70" cy="150" r="4" fill="currentColor"/>
+          <circle cx="98" cy="80" r="4" fill="currentColor"/>
+          <circle cx="126" cy="95" r="4" fill="currentColor"/>
+          <circle cx="150" cy="40" r="5" fill="var(--gold)" stroke="currentColor" stroke-width="1.5"/>
+        </svg>
+
+        <div class="side-filters-card">
+          <p class="side-filters-title">Filters</p>
+          <label for="filterSupervisor">Supervisor</label>
+          <select id="filterSupervisor"><option value="">All</option></select>
+          <label for="filterSkill">Skill</label>
+          <select id="filterSkill"><option value="">All</option></select>
+          <label for="filterManager">Manager</label>
+          <select id="filterManager"><option value="">All</option></select>
         </div>
       </div>
-    </div>
-    <div class="supervisor-card">
-      <h3>Supervisor pass rate</h3>
-      <div id="parList"><div class="par-empty">Upload a workbook to see PAR by supervisor.</div></div>
+    </aside>
+
+    <div class="dashboard-main">
+
+      <div class="summary-grid">
+        <div class="summary-main">
+          <div class="summary-top">
+            <div class="summary-text">
+              <p class="stat-label">Team pass rate</p>
+              <div class="stat-huge" id="teamRateStat">—</div>
+              <p class="stat-sub" id="teamRateSub">Upload a workbook to see results.</p>
+            </div>
+            <div class="gauge-wrap">
+              <svg id="teamGaugeSvg" viewBox="0 0 200 116" xmlns="http://www.w3.org/2000/svg">
+                <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="var(--cream-2)" stroke-width="16" stroke-linecap="round"/>
+                <path id="teamGaugeValue" d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="var(--gold-deep)" stroke-width="16" stroke-linecap="round" stroke-dasharray="0 251.3"/>
+              </svg>
+              <div class="gauge-label" id="teamGaugeLabel">—</div>
+            </div>
+          </div>
+          <div class="stat-row">
+            <div class="stat-box stat-box-clickable" id="statBoxPass" data-status="pass">
+              <p class="stat-box-label">Passing</p>
+              <div class="stat-box-num" id="passingCount">0</div>
+            </div>
+            <div class="stat-box stat-box-clickable" id="statBoxReview" data-status="review">
+              <p class="stat-box-label">Needs review</p>
+              <div class="stat-box-num" id="reviewCount">0</div>
+            </div>
+            <div class="stat-box stat-box-clickable" id="statBoxMissing" data-status="missing">
+              <p class="stat-box-label">Missing data</p>
+              <div class="stat-box-num" id="missingCount">0</div>
+            </div>
+          </div>
+        </div>
+        <div class="supervisor-card">
+          <h3>Supervisor pass rate</h3>
+          <div id="parList"><div class="par-empty">Upload a workbook to see PAR by supervisor.</div></div>
+        </div>
+      </div>
+
+      <section id="step-comparison" class="panel">
+        <div class="panel-head" id="comparisonBlockHead" style="cursor:pointer;">
+          <h2 class="panel-title">Comparison graphs <span id="comparisonChevron" style="font-family:var(--r-mono);font-size:14px;color:var(--ink-soft);display:inline-block;transition:transform .15s ease;">▸</span></h2>
+          <span class="step-note" style="color:var(--ink-soft);">Skill · team · manager</span>
+        </div>
+        <div id="comparisonWrap" style="display:none;">
+          <div class="comparison-controls">
+            <div class="toggle-group" id="comparisonGroupByToggle">
+              <button class="toggle-btn active" data-value="skill" type="button">Per skill</button>
+              <button class="toggle-btn" data-value="team" type="button">Per team</button>
+              <button class="toggle-btn" data-value="manager" type="button">Per manager</button>
+            </div>
+            <div class="toggle-group" id="comparisonMetricToggle">
+              <button class="toggle-btn active" data-value="avgRating" type="button">Avg rating</button>
+              <button class="toggle-btn" data-value="passRate" type="button">Pass rate %</button>
+            </div>
+          </div>
+          <div id="comparisonChart" class="comparison-chart"></div>
+        </div>
+      </section>
+
+      <section id="step-workbook" class="panel">
+        <div class="upload-card compact">
+          <button class="template-btn" id="templateBtn" type="button" title="Download a blank template workbook">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+          </button>
+          <button class="template-btn upload-icon-btn" id="uploadIconBtn" type="button" title="Upload skill performance workbook — each tab = a skill (Manager, Supervisor, EID, Employee Name, AHT/Case Rate, ProdHrs), grouped by EID, plus a Quality tab with a Skill column for per-skill DPU/DPO">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+            <input type="file" id="fileInput" accept=".xlsx,.xls" />
+          </button>
+          <div class="upload-status-inline">
+            <div id="fileStatus" class="file-status"></div>
+            <div id="cloudStatus" class="file-status"></div>
+            <div id="lastUploadedLine" class="file-status"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="step-targets" class="panel">
+        <div class="panel-head" id="refBlockHead" style="cursor:pointer;">
+          <h2 class="panel-title">Reference thresholds &amp; targets <span id="refChevron" style="font-family:var(--r-mono);font-size:14px;color:var(--ink-soft);display:inline-block;transition:transform .15s ease;">▸</span></h2>
+          <span class="step-note" style="color:var(--ink-soft);">Editable — recalculates instantly</span>
+        </div>
+        <div id="refTableWrap" style="display:none;">
+          <div class="ref-table-scroll">
+            <table class="ref" id="refTable">
+              <thead>
+                <tr>
+                  <th>Skill</th>
+                  <th>Target</th>
+                  <th>Rating 5</th>
+                  <th>Rating 4</th>
+                  <th>Rating 3</th>
+                  <th>Rating 2</th>
+                  <th>Rating 1</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="refTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section id="step-results" class="panel">
+        <div class="panel-head">
+          <h2 class="panel-title">Employee performance</h2>
+          <div class="toolbar">
+            <input class="search-input" id="searchInput" type="text" placeholder="Search employee" />
+            <select class="sort-select" id="sortSelect">
+              <option value="rate-desc">High to low</option>
+              <option value="rate-asc">Low to high</option>
+              <option value="name-asc">Name — A to Z</option>
+            </select>
+          </div>
+        </div>
+        <div class="emp-card-container">
+          <div class="emp-list-head">
+            <span></span>
+            <span>Employee</span>
+            <span>Skills · Rating</span>
+            <span>Scale</span>
+            <span>Final Rate</span>
+          </div>
+          <div id="empList"></div>
+        </div>
+      </section>
+
     </div>
   </div>
-
-  <section id="step-workbook" class="panel">
-    <div class="upload-card compact">
-      <button class="template-btn" id="templateBtn" type="button" title="Download a blank template workbook">
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-      </button>
-      <button class="template-btn upload-icon-btn" id="uploadIconBtn" type="button" title="Upload skill performance workbook — each tab = a skill (Manager, Supervisor, EID, Employee Name, AHT/Case Rate, ProdHrs), grouped by EID, plus a Quality tab with a Skill column for per-skill DPU/DPO">
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-        <input type="file" id="fileInput" accept=".xlsx,.xls" />
-      </button>
-      <div class="upload-status-inline">
-        <div id="fileStatus" class="file-status"></div>
-        <div id="cloudStatus" class="file-status"></div>
-      </div>
-    </div>
-  </section>
-
-  <section id="step-targets" class="panel">
-    <div class="panel-head" id="refBlockHead" style="cursor:pointer;">
-      <h2 class="panel-title">Reference thresholds &amp; targets <span id="refChevron" style="font-family:var(--r-mono);font-size:14px;color:var(--ink-soft);display:inline-block;transition:transform .15s ease;">▸</span></h2>
-      <span class="step-note" style="color:var(--ink-soft);">Editable — recalculates instantly</span>
-    </div>
-    <div id="refTableWrap" style="display:none;">
-      <div class="ref-table-scroll">
-        <table class="ref" id="refTable">
-          <thead>
-            <tr>
-              <th>Skill</th>
-              <th>Target</th>
-              <th>Rating 5</th>
-              <th>Rating 4</th>
-              <th>Rating 3</th>
-              <th>Rating 2</th>
-              <th>Rating 1</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody id="refTableBody"></tbody>
-        </table>
-      </div>
-    </div>
-  </section>
-
-  <section id="step-results" class="panel">
-    <div class="panel-head">
-      <h2 class="panel-title">Employee performance</h2>
-      <div class="toolbar">
-        <input class="search-input" id="searchInput" type="text" placeholder="Search employee" />
-        <select class="sort-select" id="sortSelect">
-          <option value="rate-desc">High to low</option>
-          <option value="rate-asc">Low to high</option>
-          <option value="name-asc">Name — A to Z</option>
-        </select>
-      </div>
-    </div>
-    <div class="emp-card-container">
-      <div class="emp-list-head">
-        <span></span>
-        <span>Employee</span>
-        <span>Skills · Rating</span>
-        <span>Scale</span>
-        <span>Final Rate</span>
-      </div>
-      <div id="empList"></div>
-    </div>
-  </section>
 
   <footer>Prod_calculation · client-side only — nothing you upload leaves this browser.</footer>
 
@@ -1463,6 +1604,19 @@ function setCloudStatus(text, isErr){
   el.style.color = isErr ? 'var(--bad)' : 'var(--good)';
 }
 
+function setLastUploadedDisplay(isoTimestamp){
+  const el = document.getElementById('lastUploadedLine');
+  if (!el) return;
+  if (!isoTimestamp){ el.textContent = ''; return; }
+  const d = new Date(isoTimestamp);
+  const formatted = d.toLocaleString(undefined, {
+    year: 'numeric', month: 'short', day: 'numeric',
+    hour: 'numeric', minute: '2-digit'
+  });
+  el.textContent = 'Last uploaded: ' + formatted;
+  el.style.color = 'var(--ink-soft)';
+}
+
 let _saveDebounceTimer = null;
 function saveWorkbookToCloudDebounced(){
   clearTimeout(_saveDebounceTimer);
@@ -1495,7 +1649,7 @@ function mergeReferenceWithDefaults(loadedRef){
 async function saveWorkbookToCloud(){
   if (!supabaseClient || !currentUserId) return;
   setCloudStatus('Saving to your account…', false);
-  const payload = { employees, qualityData, supervisorOf, managerOf, reference };
+  const payload = { employees, qualityData, supervisorOf, managerOf, reference, uploadedAt: lastUploadedAt };
   const { error } = await supabaseClient
     .from('workbook_data')
     .upsert({
@@ -1510,6 +1664,7 @@ async function saveWorkbookToCloud(){
     setCloudStatus('Could not save to your account — ' + error.message, true);
   } else {
     setCloudStatus('✓ Saved to your account', false);
+    setLastUploadedDisplay(lastUploadedAt);
   }
 }
 
@@ -1543,6 +1698,8 @@ async function loadWorkbookFromCloud(){
     statusEl.className = 'file-status';
   }
   setCloudStatus('✓ Synced from your account', false);
+  lastUploadedAt = data.payload.uploadedAt || data.updated_at || null;
+  setLastUploadedDisplay(lastUploadedAt);
   saveWorkbookToCloudDebounced();
 }
 
@@ -1577,6 +1734,7 @@ const DEFAULT_ATTRIBUTES_FALLBACK = 23; // used only when a Quality row's Skill 
 let supervisorOf = {};
 let managerOf = {};
 let currentFileName = null;
+let lastUploadedAt = null; // set only when an actual file is uploaded, not on background re-saves
 let statusFilter = null; // null | 'pass' | 'review' | 'missing'
 
 function getActiveFilters(){
@@ -1647,7 +1805,9 @@ document.getElementById('fileInput').addEventListener('change', function(e){
       const data = new Uint8Array(ev.target.result);
       const wb = XLSX.read(data, { type: 'array' });
       currentFileName = file.name;
+      lastUploadedAt = new Date().toISOString();
       parseWorkbook(wb);
+      setLastUploadedDisplay(lastUploadedAt);
       statusEl.textContent = '✓ Loaded ' + file.name + ' — ' + wb.SheetNames.length + ' skill tab(s), ' + Object.keys(employees).length + ' employee(s)';
       statusEl.className = 'file-status';
     }catch(err){
@@ -1948,6 +2108,7 @@ function renderAll(){
   renderSummary();
   renderEmployees();
   renderParSidebar();
+  refreshComparisonIfOpen();
 }
 
 function renderSummary(){
@@ -2158,9 +2319,10 @@ function renderEmployees(){
     const card = document.createElement('div');
     card.className = 'emp-card';
 
-    const skillText = result.rows.map(r =>
-      `<span class="${r.missing ? 'miss' : ''}">${escapeHtml(r.skillName)} ${r.ratingInfo ? r.ratingInfo.rating.toFixed(2) : '—'}</span>`
-    ).join(' · ');
+    const skillText = result.rows.map(r => {
+      const flagged = r.missing || (r.ratio !== null && r.ratio < 1);
+      return `<span class="${flagged ? 'miss' : ''}">${escapeHtml(r.skillName)} ${r.ratingInfo ? r.ratingInfo.rating.toFixed(2) : '—'}</span>`;
+    }).join(' · ');
 
     const detailRows = result.rows.map(r => {
       const ratio = r.ratio !== null ? r.ratio.toFixed(4) : '—';
@@ -2170,7 +2332,8 @@ function renderEmployees(){
       const maxT = r.ratingInfo ? r.ratingInfo.upperT.toFixed(4) : '—';
       const weight = (r.weight*100).toFixed(1) + '%';
       const wscore = r.ratingInfo ? r.weightedScore.toFixed(3) : '—';
-      return `<tr class="${r.missing ? 'miss' : ''}">
+      const flagged = r.missing || (r.ratio !== null && r.ratio < 1);
+      return `<tr class="${flagged ? 'miss' : ''}">
         <td class="skillname">${escapeHtml(r.skillName)}</td>
         <td>${r.actual ?? '—'}</td>
         <td>${r.target ?? '—'}</td>
@@ -2314,6 +2477,7 @@ document.getElementById('sortSelect').addEventListener('change', renderEmployees
     renderSummary();
     renderEmployees();
     renderParSidebar();
+    refreshComparisonIfOpen();
   });
 });
 ['statBoxPass','statBoxReview','statBoxMissing'].forEach(id => {
@@ -2324,6 +2488,7 @@ document.getElementById('sortSelect').addEventListener('change', renderEmployees
     renderSummary();
     renderEmployees();
     renderParSidebar();
+    refreshComparisonIfOpen();
   });
 });
 document.getElementById('exportBtn').addEventListener('click', exportReport);
@@ -2334,6 +2499,119 @@ document.getElementById('refBlockHead').addEventListener('click', function(){
   const isOpen = wrap.style.display !== 'none';
   wrap.style.display = isOpen ? 'none' : 'block';
   chevron.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(90deg)';
+});
+
+document.getElementById('sidebarToggle').addEventListener('click', function(){
+  const layout = document.getElementById('dashboardLayout');
+  const collapsed = layout.classList.toggle('sidebar-collapsed');
+  this.textContent = collapsed ? '›' : '‹';
+  this.title = collapsed ? 'Expand filters' : 'Collapse filters';
+});
+
+document.getElementById('comparisonBlockHead').addEventListener('click', function(){
+  const wrap = document.getElementById('comparisonWrap');
+  const chevron = document.getElementById('comparisonChevron');
+  const isOpen = wrap.style.display !== 'none';
+  wrap.style.display = isOpen ? 'none' : 'block';
+  chevron.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(90deg)';
+  if (!isOpen) renderComparisonChart();
+});
+
+/* ---------------------------------------------------------------
+   COMPARISON GRAPHS — per skill / per team / per manager,
+   toggle between average rating and pass rate %
+--------------------------------------------------------------- */
+let comparisonGroupBy = 'skill'; // 'skill' | 'team' | 'manager'
+let comparisonMetric = 'avgRating'; // 'avgRating' | 'passRate'
+
+function computeComparisonData(){
+  const keys = Object.keys(employees);
+  const groups = {};
+
+  keys.forEach(k => {
+    const result = computeEmployee(k);
+    if (!employeePassesSideFilters(k, result)) return;
+    const passes = isPass(result);
+
+    let groupNames = [];
+    if (comparisonGroupBy === 'skill'){
+      groupNames = result.rows.filter(r => r.ratingInfo).map(r => r.skillName);
+    } else if (comparisonGroupBy === 'team'){
+      groupNames = [supervisorOf[k] || 'Unassigned'];
+    } else {
+      groupNames = [managerOf[k] || 'Unassigned'];
+    }
+
+    groupNames.forEach(name => {
+      if (!groups[name]) groups[name] = { ratingSum: 0, ratingCount: 0, passCount: 0, total: 0 };
+      const g = groups[name];
+      g.total += 1;
+      if (passes) g.passCount += 1;
+      if (comparisonGroupBy === 'skill'){
+        const row = result.rows.find(r => r.skillName === name);
+        if (row && row.ratingInfo){ g.ratingSum += row.ratingInfo.rating; g.ratingCount += 1; }
+      } else {
+        if (result.finalRate !== null && result.finalRate !== undefined && !result.hasMissing){
+          g.ratingSum += result.finalRate; g.ratingCount += 1;
+        }
+      }
+    });
+  });
+
+  const names = Object.keys(groups);
+  const data = names.map(name => {
+    const g = groups[name];
+    const avgRating = g.ratingCount > 0 ? g.ratingSum / g.ratingCount : 0;
+    const passRate = g.total > 0 ? (g.passCount / g.total * 100) : 0;
+    return { name, avgRating, passRate, total: g.total };
+  });
+  data.sort((a,b) => (comparisonMetric === 'passRate' ? b.passRate - a.passRate : b.avgRating - a.avgRating));
+  return data;
+}
+
+function renderComparisonChart(){
+  const chartEl = document.getElementById('comparisonChart');
+  if (!chartEl) return;
+  const data = computeComparisonData();
+
+  if (data.length === 0){
+    chartEl.innerHTML = '<div class="comparison-empty">Upload a workbook to see comparison graphs.</div>';
+    return;
+  }
+
+  const max = comparisonMetric === 'passRate' ? 100 : 5;
+  chartEl.innerHTML = data.map(d => {
+    const value = comparisonMetric === 'passRate' ? d.passRate : d.avgRating;
+    const pct = Math.max(2, Math.min(100, (value / max) * 100));
+    const valueLabel = comparisonMetric === 'passRate' ? value.toFixed(0) + '%' : value.toFixed(2);
+    return `<div class="comparison-bar-col" title="${escapeAttr(d.name)}: ${valueLabel} (${d.total} employee${d.total===1?'':'s'})">
+      <div class="comparison-bar-value">${valueLabel}</div>
+      <div class="comparison-bar" style="height:${pct}%;"></div>
+      <div class="comparison-bar-label">${escapeHtml(d.name)}</div>
+    </div>`;
+  }).join('');
+}
+
+function refreshComparisonIfOpen(){
+  const wrap = document.getElementById('comparisonWrap');
+  if (wrap && wrap.style.display !== 'none') renderComparisonChart();
+}
+
+document.querySelectorAll('#comparisonGroupByToggle .toggle-btn').forEach(btn => {
+  btn.addEventListener('click', function(){
+    document.querySelectorAll('#comparisonGroupByToggle .toggle-btn').forEach(b => b.classList.remove('active'));
+    this.classList.add('active');
+    comparisonGroupBy = this.getAttribute('data-value');
+    renderComparisonChart();
+  });
+});
+document.querySelectorAll('#comparisonMetricToggle .toggle-btn').forEach(btn => {
+  btn.addEventListener('click', function(){
+    document.querySelectorAll('#comparisonMetricToggle .toggle-btn').forEach(b => b.classList.remove('active'));
+    this.classList.add('active');
+    comparisonMetric = this.getAttribute('data-value');
+    renderComparisonChart();
+  });
 });
 
 /* ---------------------------------------------------------------
