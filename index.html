@@ -1,0 +1,2648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Production overview — Prod Calculation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --navy: #0F1B33;
+    --navy-2: #182A4D;
+    --navy-3: #24396B;
+    --cream: #F6F1E4;
+    --cream-2: #EDE6D3;
+    --gold: #C6A15B;
+    --gold-deep: #9C7A34;
+    --ink: #1B1E27;
+    --ink-soft: #5B5F6B;
+    --ink-faint: #9A9C9C;
+    --line: #DED4B9;
+    --good: #4A6B52;
+    --warn: #B08328;
+    --bad: #A9463A;
+    --r-display: 'Fraunces', serif;
+    --r-body: 'IBM Plex Sans', sans-serif;
+    --r-mono: 'IBM Plex Mono', monospace;
+  }
+  *{ box-sizing: border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    background: var(--cream);
+    color: var(--ink);
+    font-family: var(--r-body);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  ::selection{ background: var(--gold); color: var(--navy); }
+  a{ color: inherit; text-decoration:none; }
+
+  .wrap{
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 40px 28px 90px;
+  }
+
+  .side-graphic{
+    position: fixed;
+    left: 4vw;
+    top: 50%;
+    width: 130px;
+    height: auto;
+    color: var(--navy);
+    opacity: 0.16;
+    pointer-events: none;
+    z-index: 0;
+    animation: sideGraphicFloat 7s ease-in-out infinite;
+  }
+  @keyframes sideGraphicFloat{
+    0%, 100% { transform: translateY(-50%); }
+    50% { transform: translateY(calc(-50% - 14px)); }
+  }
+  @media (max-width: 1480px){
+    .side-graphic{ display:none; }
+  }
+
+  .top-banner{
+    background: #0F1B33;
+    color: var(--gold);
+    margin: -40px -28px 24px;
+    padding: 10px 28px;
+    font-family: var(--r-mono);
+    font-size: 11.5px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    text-align: center;
+  }
+
+  header.top{
+    display:flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+    padding-bottom: 22px;
+    margin-bottom: 28px;
+    border-bottom: 1px solid var(--line);
+    flex-wrap: wrap;
+  }
+  .eyebrow{
+    font-family: var(--r-mono);
+    font-size: 12px;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: var(--gold-deep);
+    margin: 0 0 8px;
+  }
+  h1{
+    font-family: var(--r-display);
+    font-weight: 500;
+    font-size: 34px;
+    line-height: 1.05;
+    margin: 0;
+    color: var(--navy);
+    letter-spacing: -0.02em;
+  }
+  .export-btn{
+    background: var(--navy);
+    color: var(--cream);
+    border: none;
+    padding: 12px 22px;
+    border-radius: 24px;
+    font-family: var(--r-body);
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background .15s ease;
+  }
+  .export-btn:hover{ background: var(--navy-3); }
+  .export-btn:disabled{ opacity: .4; cursor: not-allowed; }
+
+  .summary-grid{
+    display:grid;
+    grid-template-columns: 1fr 320px;
+    gap: 20px;
+    margin-bottom: 26px;
+  }
+  .summary-main{
+    background:
+      radial-gradient(circle at 100% 0%, rgba(198,161,91,0.09), transparent 55%),
+      white;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 30px 32px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 8px 22px rgba(156,122,52,0.06);
+  }
+  .summary-top, .stat-row{ position: relative; z-index: 1; }
+  .stat-label{
+    font-family: var(--r-mono);
+    font-size: 11.5px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    margin: 0 0 6px;
+  }
+  .stat-huge{
+    font-family: var(--r-display);
+    font-weight: 500;
+    font-size: 68px;
+    line-height: 1;
+    letter-spacing: 0.01em;
+    color: var(--navy);
+    margin-bottom: 10px;
+  }
+  .stat-sub{
+    font-size: 13.5px;
+    color: var(--ink-soft);
+    margin: 0;
+  }
+  .summary-top{
+    display:flex;
+    align-items:center;
+    justify-content: space-between;
+    gap: 36px;
+    margin-bottom: 22px;
+  }
+  .summary-text{ flex:1; min-width: 0; }
+  .gauge-wrap{
+    position: relative;
+    width: 190px;
+    flex-shrink: 0;
+    text-align: center;
+    padding: 8px;
+  }
+  .gauge-wrap svg{ display:block; width:100%; height:auto; }
+  .gauge-label{
+    position: absolute;
+    left:0; right:0;
+    bottom: 4px;
+    font-family: var(--r-mono);
+    font-size: 11px;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+  .stat-row{
+    display:flex;
+    gap: 0;
+    border-top: 1px solid var(--line);
+    padding-top: 18px;
+  }
+  .stat-box{
+    flex:1;
+    padding: 0 22px;
+    border-left: 1px solid var(--line);
+  }
+  .stat-box:first-child{ padding-left:0; border-left:none; }
+  .stat-box-label{
+    font-family: var(--r-mono);
+    font-size: 10.5px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    margin: 0 0 6px;
+  }
+  .stat-box-num{
+    font-family: var(--r-display);
+    font-weight: 600;
+    font-size: 26px;
+    color: var(--navy);
+  }
+
+  .supervisor-card{
+    position: relative;
+    background:
+      repeating-linear-gradient(45deg, rgba(255,255,255,0.025) 0 1px, transparent 1px 9px),
+      repeating-linear-gradient(-45deg, rgba(255,255,255,0.025) 0 1px, transparent 1px 9px),
+      linear-gradient(160deg, var(--navy-2), var(--navy) 55%, #0A1428);
+    border: 1px solid var(--navy);
+    border-radius: 8px;
+    padding: 22px 24px;
+    box-shadow: 0 10px 26px rgba(20,15,4,0.22);
+    overflow: hidden;
+  }
+  .supervisor-card h3{
+    font-family: var(--r-display);
+    font-weight: 500;
+    font-size: 17px;
+    margin: 0 0 14px;
+    color: var(--cream);
+  }
+  #parList{ max-height: 230px; overflow-y: auto; }
+  .par-row{
+    display:flex;
+    align-items:center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 11px 0;
+    border-top: 1px solid rgba(246,241,228,0.14);
+  }
+  .par-row:first-child{ border-top:none; padding-top:2px; }
+  .par-name{
+    font-family: var(--r-display);
+    font-weight: 500;
+    font-size: 14.5px;
+    color: var(--cream);
+  }
+  .par-count{
+    font-family: var(--r-mono);
+    font-size: 10.5px;
+    color: rgba(246,241,228,0.55);
+    display:block;
+    margin-top: 2px;
+  }
+  .par-pct{
+    font-family: var(--r-mono);
+    font-weight: 600;
+    font-size: 14.5px;
+    color: #D9C08B;
+    white-space: nowrap;
+  }
+  .par-empty{ font-size:13px; color: rgba(246,241,228,0.6); }
+
+  .step-note{
+    font-family: var(--r-body);
+    font-weight: 400;
+    font-size: 12.5px;
+    color: var(--ink-soft);
+  }
+
+  .panel{ margin-bottom: 34px; scroll-margin-top: 20px; }
+  .panel-head{
+    display:flex;
+    align-items:baseline;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+  .panel-title{
+    font-family: var(--r-display);
+    font-size: 22px;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    color: var(--navy);
+    margin:0;
+    display:flex;
+    align-items:center;
+    gap: 10px;
+  }
+  .panel-title::before{
+    content: '';
+    display:inline-block;
+    width: 4px;
+    height: 20px;
+    background: var(--gold);
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+
+  .upload-card{
+    background: white;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 14px 18px;
+    box-shadow: 0 4px 14px rgba(156,122,52,0.05);
+    display:flex;
+    align-items:center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .upload-left{ display:flex; align-items:center; gap:16px; }
+  .template-btn{
+    width: 38px; height: 38px;
+    border-radius: 6px;
+    border: 1px solid var(--line);
+    background: white;
+    color: var(--navy);
+    display:flex; align-items:center; justify-content:center;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background .15s ease, border-color .15s ease;
+  }
+  .template-btn:hover{ background: var(--cream-2); border-color: var(--gold-deep); }
+  .upload-icon-btn{
+    position: relative;
+    overflow: hidden;
+    background: var(--navy);
+    color: var(--gold);
+    border-color: var(--navy);
+  }
+  .upload-icon-btn:hover{ background: var(--navy-3); }
+  .upload-icon-btn input[type=file]{ position:absolute; inset:0; opacity:0; cursor:pointer; }
+  .upload-status-inline{
+    display:flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-left: 4px;
+  }
+  .upload-status-inline .file-status{ margin-top:0; text-align:left; }
+  .file-btn{
+    position: relative;
+    overflow: hidden;
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    background: var(--navy);
+    color: var(--cream);
+    border: none;
+    padding: 11px 20px;
+    border-radius: 22px;
+    font-family: var(--r-body);
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .file-btn:hover{ background: var(--navy-3); }
+  .file-btn input[type=file]{ position:absolute; inset:0; opacity:0; cursor:pointer; }
+  .file-status{
+    font-family: var(--r-mono);
+    font-size: 12px;
+    color: var(--good);
+    margin-top: 8px;
+    text-align: right;
+  }
+  .file-status.err{ color: var(--bad); }
+
+  .ref-table-scroll{ overflow-x:auto; border:1px solid var(--line); border-radius:8px; background: white;}
+  table.ref{ width:100%; border-collapse: collapse; font-size: 13px; min-width: 700px; }
+  table.ref th{
+    text-align:left;
+    font-family: var(--r-mono);
+    font-weight:500;
+    font-size: 10.5px;
+    letter-spacing:.08em;
+    text-transform: uppercase;
+    color: var(--cream);
+    background: var(--navy);
+    padding: 12px 14px;
+  }
+  table.ref td{
+    padding: 8px 14px;
+    border-top: 1px solid var(--line);
+    font-family: var(--r-mono);
+    color: var(--ink);
+  }
+  table.ref td.skillname{ font-family: var(--r-body); font-weight:600; color: var(--navy); }
+  table.ref input{
+    width: 78px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 6px 8px;
+    font-family: var(--r-mono);
+    font-size: 12.5px;
+    background: #fff;
+    color: var(--ink);
+  }
+  table.ref input:focus{ outline: 1px solid var(--gold-deep); border-color: var(--gold-deep); }
+  table.ref input.missing{ border-color: var(--bad); background: #FCEEEC; }
+  .badge-configured{
+    display:inline-block;
+    font-family: var(--r-mono);
+    font-size: 10.5px;
+    padding: 3px 8px;
+    border-radius: 20px;
+    background: #E4EEE1;
+    color: var(--good);
+  }
+
+  .toolbar{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  .search-input{
+    padding: 11px 16px;
+    border:1px solid var(--line);
+    border-radius: 24px;
+    font-family: var(--r-body);
+    font-size: 13.5px;
+    background: white;
+    color: var(--ink);
+    min-width: 220px;
+  }
+  .search-input::placeholder{ color: var(--ink-faint); }
+  .sort-select{
+    padding: 11px 16px;
+    border: 1px solid var(--line);
+    border-radius: 24px;
+    background: white;
+    font-family: var(--r-body);
+    font-size: 13px;
+    color: var(--ink);
+    cursor: pointer;
+  }
+
+  .emp-card-container{
+    background: white;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 8px 22px rgba(156,122,52,0.06);
+  }
+  .emp-list{ }
+  .emp-list-head{
+    display:grid;
+    grid-template-columns: 20px 190px 1fr 148px 80px;
+    gap: 22px;
+    padding: 14px 20px 10px;
+    border-bottom: 1px solid var(--line);
+    font-family: var(--r-mono);
+    font-size: 10.5px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+  .emp-list-head span:last-child{ text-align:right; }
+  .emp-card:nth-child(even){ background: rgba(198,161,91,0.045); }
+  .emp-card:nth-child(even) .emp-row:hover{ background: rgba(198,161,91,0.09); }
+  .emp-card{ border-bottom: 1px solid var(--line); }
+  .emp-card:last-child{ border-bottom: none; }
+  .emp-row{
+    display:grid;
+    grid-template-columns: 20px 190px 1fr 148px 80px;
+    align-items:center;
+    gap: 22px;
+    padding: 16px 20px;
+    cursor: pointer;
+  }
+  .emp-row:hover{ background: #FBF9F2; }
+  .emp-name{
+    font-family: var(--r-display);
+    font-weight:600;
+    font-size: 16px;
+    color: var(--navy);
+  }
+  .emp-skills{
+    font-family: var(--r-mono);
+    font-size: 12px;
+    color: var(--ink-soft);
+    line-height: 1.6;
+    font-variant-numeric: tabular-nums;
+  }
+  .emp-skills .miss{ color: var(--bad); }
+
+  .rating-ladder{
+    width: 148px;
+    flex-shrink: 0;
+  }
+  .rating-ladder svg{ display:block; width:100%; height:auto; }
+  .rating-ladder .rl-tick{ stroke: var(--line); stroke-width: 1; }
+  .rating-ladder .rl-baseline{ stroke: var(--line); stroke-width: 1.5; }
+  .rating-ladder .rl-fill{ stroke-width: 2; }
+  .rating-ladder .rl-num{
+    font-family: var(--r-mono);
+    font-size: 7.5px;
+    fill: var(--ink-faint);
+  }
+
+  .rate-wrap{ text-align:right; }
+  .rate-num{
+    font-family: var(--r-mono);
+    font-weight: 600;
+    font-size: 19px;
+    display:block;
+    font-variant-numeric: tabular-nums;
+  }
+  .rate-num.pass{ color: var(--good); }
+  .rate-num.fail{ color: var(--bad); }
+  .rate-status{
+    font-family: var(--r-mono);
+    font-size: 9.5px;
+    font-weight: 600;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    display:inline-block;
+    margin-top: 5px;
+    padding: 2px 9px;
+    border-radius: 10px;
+  }
+  .rate-status.pass{ color: var(--good); background: rgba(74,107,82,0.13); }
+  .rate-status.fail{ color: var(--bad); background: rgba(162,59,59,0.13); }
+
+  .chev{
+    font-family: var(--r-mono);
+    color: var(--ink-faint);
+    font-size: 11px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--cream-2);
+    transition: transform .4s cubic-bezier(.34,1.56,.64,1), background .2s ease, color .2s ease;
+    flex-shrink: 0;
+  }
+  .emp-card.open .chev{ transform: rotate(90deg); background: var(--gold); color: white; }
+
+  .emp-detail{
+    display:none;
+    padding: 4px 20px 22px;
+  }
+  .emp-card.open .emp-detail{ display:block; }
+
+  table.detail{ width:100%; border-collapse: collapse; font-size: 12.5px; margin-bottom: 14px; }
+  table.detail th{
+    text-align:left;
+    font-family: var(--r-mono);
+    font-size: 10px;
+    letter-spacing:.05em;
+    text-transform:uppercase;
+    color: var(--cream);
+    background: var(--navy);
+    padding: 8px 10px;
+  }
+  table.detail td{
+    padding: 8px 10px;
+    border-bottom: 1px solid #EDE7D5;
+    font-family: var(--r-mono);
+    color: var(--ink);
+  }
+  table.detail td.skillname{ font-family: var(--r-body); font-weight:600; color: var(--navy); }
+  table.detail tr.miss td{ color: var(--bad); }
+
+  .quality-line{
+    display:flex; flex-wrap:wrap; gap: 6px 20px;
+    font-family: var(--r-mono); font-size: 12px; color: var(--ink-soft);
+    padding-top: 10px; border-top: 1px dashed var(--line); margin-bottom: 10px;
+  }
+  .final-line{
+    display:flex; align-items:center; justify-content: space-between;
+    font-family: var(--r-mono); font-size: 13px; color: var(--ink-soft);
+  }
+  .final-line b{ font-family: var(--r-display); font-size: 15px; color: var(--navy); }
+
+  .empty-state{
+    text-align:center;
+    padding: 60px 20px;
+    color: var(--ink-soft);
+    font-size: 14px;
+    border: 1px dashed var(--line);
+    border-radius: 8px;
+    background: white;
+  }
+  .empty-state b{ display:block; font-family: var(--r-display); font-size:18px; color: var(--navy); margin-bottom:6px; font-weight:600;}
+
+  footer{
+    margin-top: 50px;
+    padding-top: 18px;
+    border-top: 1px solid var(--line);
+    font-size: 12px;
+    color: var(--ink-faint);
+    font-family: var(--r-mono);
+  }
+
+  @media (max-width: 860px){
+    .summary-grid{ grid-template-columns: 1fr; }
+  }
+  /* ---------- Auth ---------- */
+  .auth-overlay{
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(circle at 50% 38%, rgba(198,161,91,0.16), transparent 58%),
+      repeating-linear-gradient(0deg, rgba(255,255,255,0.035) 0 1px, transparent 1px 34px),
+      repeating-linear-gradient(90deg, rgba(255,255,255,0.035) 0 1px, transparent 1px 34px),
+      var(--navy);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    overflow: hidden;
+  }
+  .auth-overlay.hidden{ display: none; }
+  .auth-bg-canvas{
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+    pointer-events: none;
+  }
+  .auth-card{
+    position: relative;
+    z-index: 2;
+    background: white;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 36px 34px 30px;
+    width: 100%;
+    max-width: 380px;
+    overflow: hidden;
+    box-shadow:
+      0 2px 4px rgba(30,22,4,0.10),
+      0 14px 28px rgba(30,22,4,0.20),
+      0 34px 70px rgba(15,10,2,0.28);
+  }
+  .auth-card::before{
+    content:'';
+    position:absolute; top:0; left:0; right:0; height:3px;
+    background: linear-gradient(90deg, transparent, var(--gold) 25%, var(--gold-deep) 50%, var(--gold) 75%, transparent);
+  }
+  .auth-tabs{ display:flex; gap:6px; margin-bottom: 22px; background: var(--cream-2); border-radius: 24px; padding: 4px; }
+  .auth-tab{
+    flex:1;
+    padding: 9px 0;
+    border: none;
+    background: none;
+    border-radius: 20px;
+    font-family: var(--r-body);
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--ink-soft);
+    cursor: pointer;
+  }
+  .auth-tab.active{ background: var(--navy); color: var(--cream); }
+  .auth-form label{
+    display:block;
+    font-family: var(--r-mono);
+    font-size: 11px;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    margin: 14px 0 6px;
+  }
+  .auth-form label:first-child{ margin-top: 0; }
+  .auth-form input{
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    font-family: var(--r-body);
+    font-size: 14px;
+    color: var(--ink);
+    background: white;
+  }
+  .auth-form input:focus{ outline: 1px solid var(--gold-deep); border-color: var(--gold-deep); }
+  .auth-error{
+    color: var(--bad);
+    font-size: 12.5px;
+    margin-top: 10px;
+    min-height: 0;
+  }
+  .auth-submit{
+    width: 100%;
+    margin-top: 20px;
+    background: var(--navy);
+    color: var(--cream);
+    border: none;
+    padding: 12px 0;
+    border-radius: 24px;
+    font-family: var(--r-body);
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+  }
+  .auth-submit:hover{ background: var(--navy-3); }
+  .auth-submit:disabled{ opacity: .5; cursor: not-allowed; }
+  .auth-link{
+    display:block;
+    width:100%;
+    text-align:center;
+    background:none;
+    border:none;
+    margin-top:12px;
+    font-family: var(--r-body);
+    font-size: 12.5px;
+    color: var(--ink-soft);
+    text-decoration: underline;
+    cursor: pointer;
+  }
+  .auth-link:hover{ color: var(--navy); }
+  .auth-form select{
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    font-family: var(--r-body);
+    font-size: 14px;
+    color: var(--ink);
+    background: white;
+  }
+
+  .account-bar{
+    display:flex;
+    align-items:center;
+    gap: 12px;
+    font-family: var(--r-mono);
+    font-size: 12px;
+    color: var(--ink-soft);
+  }
+  .account-bar b{ color: var(--navy); font-family: var(--r-body); }
+  .logout-btn{
+    background: none;
+    border: 1px solid var(--line);
+    color: var(--ink-soft);
+    padding: 6px 14px;
+    border-radius: 16px;
+    font-family: var(--r-body);
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .logout-btn:hover{ border-color: var(--bad); color: var(--bad); }
+
+  /* ---------- Data assistant chat ---------- */
+  .chat-fab{
+    position: fixed;
+    right: 24px;
+    bottom: 24px;
+    width: 54px; height: 54px;
+    border-radius: 50%;
+    background: var(--navy);
+    color: var(--gold);
+    border: none;
+    display:flex; align-items:center; justify-content:center;
+    cursor: pointer;
+    box-shadow: 0 6px 18px rgba(15,27,51,0.28);
+    z-index: 40;
+    transition: background .15s ease, transform .15s ease;
+  }
+  .chat-fab:hover{ background: var(--navy-3); box-shadow: 0 0 0 3px rgba(198,161,91,0.45), 0 6px 18px rgba(15,27,51,0.28); }
+  .tm-fab{ right: 88px; }
+
+  .tm-panel{
+    position: fixed;
+    right: 24px;
+    bottom: 90px;
+    width: 460px;
+    max-width: calc(100vw - 48px);
+    height: 620px;
+    max-height: calc(100vh - 140px);
+    background: white;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    box-shadow: 0 12px 32px rgba(15,27,51,0.22);
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+    z-index: 41;
+  }
+  .tm-panel.open{ display:flex; }
+  .tm-frame{
+    flex: 1;
+    width: 100%;
+    border: none;
+    background: var(--cream);
+  }
+
+  .chat-panel{
+    position: fixed;
+    right: 24px;
+    bottom: 90px;
+    width: 340px;
+    max-width: calc(100vw - 48px);
+    height: 440px;
+    max-height: calc(100vh - 140px);
+    background: white;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    box-shadow: 0 12px 32px rgba(15,27,51,0.22);
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+    z-index: 41;
+  }
+  .chat-panel.open{ display:flex; }
+
+  .chat-head{
+    background: var(--navy);
+    color: var(--cream);
+    padding: 14px 16px;
+    display:flex;
+    align-items:flex-start;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .chat-head b{ font-family: var(--r-display); font-size: 15px; display:block; }
+  .chat-head span{ font-family: var(--r-body); font-size: 11px; color: rgba(246,241,228,0.65); display:block; margin-top:2px; }
+  .chat-close{
+    background: none; border: none; color: rgba(246,241,228,0.75);
+    font-size: 14px; cursor: pointer; padding: 2px 4px; flex-shrink:0;
+  }
+  .chat-close:hover{ color: var(--cream); }
+
+  .chat-body{
+    flex:1;
+    overflow-y: auto;
+    padding: 14px 14px 6px;
+    display:flex;
+    flex-direction: column;
+    gap: 10px;
+    background: var(--cream);
+  }
+  .chat-msg{
+    max-width: 88%;
+    padding: 9px 12px;
+    border-radius: 10px;
+    font-size: 13px;
+    line-height: 1.45;
+    white-space: pre-line;
+  }
+  .chat-msg.bot{
+    background: white;
+    border: 1px solid var(--line);
+    color: var(--ink);
+    align-self: flex-start;
+  }
+  .chat-msg.user{
+    background: var(--navy);
+    color: var(--cream);
+    align-self: flex-end;
+  }
+
+  .chat-input-row{
+    display:flex;
+    gap: 8px;
+    padding: 10px;
+    border-top: 1px solid var(--line);
+    background: white;
+  }
+  .chat-input-row input{
+    flex:1;
+    padding: 9px 12px;
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    font-family: var(--r-body);
+    font-size: 13px;
+    color: var(--ink);
+  }
+  .chat-input-row button{
+    background: var(--navy);
+    color: var(--cream);
+    border: none;
+    padding: 9px 16px;
+    border-radius: 20px;
+    font-family: var(--r-body);
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .chat-input-row button:hover{ background: var(--navy-3); }
+
+  @media (max-width: 640px){
+    h1{ font-size: 26px; }
+    .emp-row{
+      grid-template-columns: 20px 1fr 80px;
+      grid-template-areas: "chev name rate" "chev skills rate";
+      row-gap: 4px;
+    }
+    .emp-row .chev{ grid-area: chev; }
+    .emp-row .emp-name{ grid-area: name; }
+    .emp-row .emp-skills{ grid-area: skills; }
+    .emp-row .rate-wrap{ grid-area: rate; }
+    .rating-ladder, .emp-list-head{ display:none; }
+    .stat-huge{ font-size: 40px; }
+    .chat-panel{ right: 12px; left: 12px; width: auto; bottom: 84px; }
+    .chat-fab{ right: 16px; bottom: 16px; }
+    .tm-fab{ right: 80px; }
+    .tm-panel{ right: 12px; left: 12px; width: auto; bottom: 84px; }
+    .gauge-wrap{ display:none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="auth-overlay" id="authOverlay">
+  <canvas id="authBgCanvas" class="auth-bg-canvas"></canvas>
+  <div class="auth-card">
+    <p class="eyebrow">Cluster Leou | LAC</p>
+    <h1 style="font-size:26px;margin-bottom:22px;">Production overview</h1>
+
+    <div class="auth-tabs">
+      <button class="auth-tab active" id="tabLogin" type="button">Log in</button>
+      <button class="auth-tab" id="tabSignup" type="button">Sign up</button>
+    </div>
+
+    <form id="loginForm" class="auth-form">
+      <label>Username</label>
+      <input type="text" id="loginUsername" autocomplete="username" required />
+      <label>Password</label>
+      <input type="password" id="loginPassword" autocomplete="current-password" required />
+      <div class="auth-error" id="loginError"></div>
+      <button type="submit" class="auth-submit">Log in</button>
+      <button type="button" class="auth-link" id="forgotPasswordLink">Forgot password?</button>
+    </form>
+
+    <form id="signupForm" class="auth-form" style="display:none;">
+      <label>Username</label>
+      <input type="text" id="signupUsername" autocomplete="username" required />
+      <label>Password</label>
+      <input type="password" id="signupPassword" autocomplete="new-password" required minlength="6" />
+      <label>Confirm password</label>
+      <input type="password" id="signupPassword2" autocomplete="new-password" required minlength="6" />
+      <label>Security question</label>
+      <select id="signupQuestion">
+        <option value="What was your first pet's name?">What was your first pet's name?</option>
+        <option value="What city were you born in?">What city were you born in?</option>
+        <option value="What was your first employer's name?">What was your first employer's name?</option>
+        <option value="What is your mother's maiden name?">What is your mother's maiden name?</option>
+        <option value="What was the name of your first school?">What was the name of your first school?</option>
+      </select>
+      <label>Answer</label>
+      <input type="text" id="signupAnswer" autocomplete="off" required />
+      <div class="auth-error" id="signupError"></div>
+      <button type="submit" class="auth-submit">Create account</button>
+    </form>
+
+    <form id="forgotForm" class="auth-form" style="display:none;">
+      <label>Username</label>
+      <input type="text" id="forgotUsername" autocomplete="username" required />
+      <div id="forgotQuestionWrap" style="display:none;">
+        <label id="forgotQuestionLabel">Security question</label>
+        <input type="text" id="forgotAnswer" autocomplete="off" placeholder="Your answer" />
+        <label>New password</label>
+        <input type="password" id="forgotNewPassword" autocomplete="new-password" minlength="6" />
+        <label>Confirm new password</label>
+        <input type="password" id="forgotNewPassword2" autocomplete="new-password" minlength="6" />
+      </div>
+      <div class="auth-error" id="forgotError"></div>
+      <div class="auth-error" id="forgotSuccess" style="color:var(--good);"></div>
+      <button type="button" class="auth-submit" id="forgotContinueBtn">Continue</button>
+      <button type="button" class="auth-link" id="backToLoginLink">Back to log in</button>
+    </form>
+  </div>
+</div>
+
+<div class="wrap" id="appRoot" style="display:none;">
+
+  <svg class="side-graphic" viewBox="0 0 160 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <line x1="14" y1="10" x2="14" y2="170" stroke="currentColor" stroke-width="1.5"/>
+    <line x1="14" y1="170" x2="150" y2="170" stroke="currentColor" stroke-width="1.5"/>
+    <polyline points="14,140 42,120 70,150 98,80 126,95 150,40" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="14" cy="140" r="4" fill="currentColor"/>
+    <circle cx="42" cy="120" r="4" fill="currentColor"/>
+    <circle cx="70" cy="150" r="4" fill="currentColor"/>
+    <circle cx="98" cy="80" r="4" fill="currentColor"/>
+    <circle cx="126" cy="95" r="4" fill="currentColor"/>
+    <circle cx="150" cy="40" r="5" fill="var(--gold)" stroke="currentColor" stroke-width="1.5"/>
+  </svg>
+
+
+  <div class="top-banner">Cluster Leou | LAC</div>
+
+  <header class="top">
+    <div>
+      <p class="eyebrow">Cluster Leou | LAC</p>
+      <h1>Production overview</h1>
+    </div>
+    <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+      <div class="account-bar">
+        Signed in as <b id="accountUsername">—</b>
+        <button class="logout-btn" id="logoutBtn" type="button">Log out</button>
+      </div>
+      <button class="export-btn" id="exportBtn" disabled>Export report</button>
+    </div>
+  </header>
+
+  <div class="summary-grid">
+    <div class="summary-main">
+      <div class="summary-top">
+        <div class="summary-text">
+          <p class="stat-label">Team pass rate</p>
+          <div class="stat-huge" id="teamRateStat">—</div>
+          <p class="stat-sub" id="teamRateSub">Upload a workbook to see results.</p>
+        </div>
+        <div class="gauge-wrap">
+          <svg id="teamGaugeSvg" viewBox="0 0 200 116" xmlns="http://www.w3.org/2000/svg">
+            <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="var(--cream-2)" stroke-width="16" stroke-linecap="round"/>
+            <path id="teamGaugeValue" d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="var(--gold-deep)" stroke-width="16" stroke-linecap="round" stroke-dasharray="0 251.3"/>
+          </svg>
+          <div class="gauge-label" id="teamGaugeLabel">—</div>
+        </div>
+      </div>
+      <div class="stat-row">
+        <div class="stat-box">
+          <p class="stat-box-label">Passing</p>
+          <div class="stat-box-num" id="passingCount">0</div>
+        </div>
+        <div class="stat-box">
+          <p class="stat-box-label">Needs review</p>
+          <div class="stat-box-num" id="reviewCount">0</div>
+        </div>
+        <div class="stat-box">
+          <p class="stat-box-label">Missing data</p>
+          <div class="stat-box-num" id="missingCount">0</div>
+        </div>
+      </div>
+    </div>
+    <div class="supervisor-card">
+      <h3>Supervisor pass rate</h3>
+      <div id="parList"><div class="par-empty">Upload a workbook to see PAR by supervisor.</div></div>
+    </div>
+  </div>
+
+  <section id="step-workbook" class="panel">
+    <div class="upload-card compact">
+      <button class="template-btn" id="templateBtn" type="button" title="Download a blank template workbook">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+      </button>
+      <button class="template-btn upload-icon-btn" id="uploadIconBtn" type="button" title="Upload skill performance workbook — each tab = a skill (Supervisor, EID, Employee Name, AHT/Case Rate, ProdHrs), grouped by EID, plus a Quality tab for DPU/DPO">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+        <input type="file" id="fileInput" accept=".xlsx,.xls" />
+      </button>
+      <div class="upload-status-inline">
+        <div id="fileStatus" class="file-status"></div>
+        <div id="cloudStatus" class="file-status"></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="step-targets" class="panel">
+    <div class="panel-head" id="refBlockHead" style="cursor:pointer;">
+      <h2 class="panel-title">Reference thresholds &amp; targets <span id="refChevron" style="font-family:var(--r-mono);font-size:14px;color:var(--ink-soft);display:inline-block;transition:transform .15s ease;">▸</span></h2>
+      <span class="step-note" style="color:var(--ink-soft);">Editable — recalculates instantly</span>
+    </div>
+    <div id="refTableWrap" style="display:none;">
+      <div class="ref-table-scroll">
+        <table class="ref" id="refTable">
+          <thead>
+            <tr>
+              <th>Skill</th>
+              <th>Target</th>
+              <th>Rating 5</th>
+              <th>Rating 4</th>
+              <th>Rating 3</th>
+              <th>Rating 2</th>
+              <th>Rating 1</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="refTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section id="step-results" class="panel">
+    <div class="panel-head">
+      <h2 class="panel-title">Employee performance</h2>
+      <div class="toolbar">
+        <input class="search-input" id="searchInput" type="text" placeholder="Search employee" />
+        <select class="sort-select" id="supervisorFilter">
+          <option value="">All supervisors</option>
+        </select>
+        <select class="sort-select" id="sortSelect">
+          <option value="rate-desc">High to low</option>
+          <option value="rate-asc">Low to high</option>
+          <option value="name-asc">Name — A to Z</option>
+        </select>
+      </div>
+    </div>
+    <div class="emp-card-container">
+      <div class="emp-list-head">
+        <span></span>
+        <span>Employee</span>
+        <span>Skills · Rating</span>
+        <span>Scale</span>
+        <span>Final Rate</span>
+      </div>
+      <div id="empList"></div>
+    </div>
+  </section>
+
+  <footer>Prod_calculation · client-side only — nothing you upload leaves this browser.</footer>
+
+  <button class="chat-fab tm-fab" id="tmFab" title="Time &amp; Motion Tracker">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"></circle><path d="M12 9v4l3 2"></path><path d="M9 2h6"></path><path d="M19 5l-1.5-1.5"></path></svg>
+  </button>
+
+  <button class="chat-fab" id="chatFab" title="Ask about this data">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+  </button>
+
+  <div class="chat-panel" id="chatPanel">
+    <div class="chat-head">
+      <div>
+        <b>Data assistant</b>
+        <span>Quick answers run locally; anything else is sent to AI</span>
+      </div>
+      <button class="chat-close" id="chatClose">✕</button>
+    </div>
+    <div class="chat-body" id="chatBody"></div>
+    <div class="chat-input-row">
+      <input type="text" id="chatInput" placeholder="e.g. who has the lowest rate?" />
+      <button id="chatSend">Ask</button>
+    </div>
+  </div>
+
+  <div class="tm-panel" id="tmPanel">
+    <div class="chat-head">
+      <div>
+        <b>Time &amp; Motion Tracker</b>
+        <span>Call flow segment timing tool</span>
+      </div>
+      <button class="chat-close" id="tmClose">✕</button>
+    </div>
+    <iframe id="tmFrame" class="tm-frame" src="" title="Time and Motion Tracker"></iframe>
+  </div>
+</div>
+
+<script>
+/* ---------------------------------------------------------------
+   AUTH — username/password login via Supabase, using a synthetic
+   email derived from the username (Supabase auth requires an email
+   under the hood, but the user only ever sees/enters a username).
+
+   FILL THESE IN with your Supabase project's values
+   (Settings -> API in the Supabase dashboard):
+--------------------------------------------------------------- */
+const SUPABASE_URL = 'https://sxlvfkkfpqqvnclmugot.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_NCCQQkvU2qt5igq2zOTKug_sU2eTQwR';
+
+const supabaseClient = (SUPABASE_URL.startsWith('http') && window.supabase)
+  ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+  : null;
+
+const AUTH_DOMAIN = 'prodcalc.local'; // fake domain — never sends real email
+let currentUserId = null;
+
+function usernameToEmail(username){
+  const clean = String(username || '').trim().toLowerCase().replace(/[^a-z0-9._-]/g, '');
+  return clean + '@' + AUTH_DOMAIN;
+}
+
+function showAuthOverlay(){
+  document.getElementById('authOverlay').classList.remove('hidden');
+  document.getElementById('appRoot').style.display = 'none';
+  currentUserId = null;
+}
+
+function showApp(username, userId){
+  document.getElementById('authOverlay').classList.add('hidden');
+  document.getElementById('appRoot').style.display = 'block';
+  document.getElementById('accountUsername').textContent = username || 'user';
+  currentUserId = userId || null;
+  loadWorkbookFromCloud();
+}
+
+function setAuthError(id, msg){
+  document.getElementById(id).textContent = msg || '';
+}
+
+async function checkExistingSession(){
+  if (!supabaseClient){
+    setAuthError('loginError', 'Supabase isn\'t configured yet — set SUPABASE_URL and SUPABASE_ANON_KEY in the code.');
+    return;
+  }
+  const { data } = await supabaseClient.auth.getSession();
+  if (data && data.session){
+    const username = data.session.user.user_metadata && data.session.user.user_metadata.username;
+    showApp(username || data.session.user.email.split('@')[0], data.session.user.id);
+  } else {
+    showAuthOverlay();
+  }
+}
+
+document.getElementById('tabLogin').addEventListener('click', function(){
+  document.getElementById('tabLogin').classList.add('active');
+  document.getElementById('tabSignup').classList.remove('active');
+  document.getElementById('loginForm').style.display = 'block';
+  document.getElementById('signupForm').style.display = 'none';
+});
+document.getElementById('tabSignup').addEventListener('click', function(){
+  document.getElementById('tabSignup').classList.add('active');
+  document.getElementById('tabLogin').classList.remove('active');
+  document.getElementById('signupForm').style.display = 'block';
+  document.getElementById('loginForm').style.display = 'none';
+});
+
+document.getElementById('loginForm').addEventListener('submit', async function(e){
+  e.preventDefault();
+  setAuthError('loginError', '');
+  if (!supabaseClient){
+    setAuthError('loginError', 'Supabase isn\'t configured yet — set SUPABASE_URL and SUPABASE_ANON_KEY in the code.');
+    return;
+  }
+  const username = document.getElementById('loginUsername').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  if (!username || !password){ setAuthError('loginError', 'Enter a username and password.'); return; }
+
+  const submitBtn = e.target.querySelector('.auth-submit');
+  submitBtn.disabled = true;
+  const { data, error } = await supabaseClient.auth.signInWithPassword({
+    email: usernameToEmail(username),
+    password
+  });
+  submitBtn.disabled = false;
+
+  if (error){
+    setAuthError('loginError', 'Incorrect username or password.');
+    return;
+  }
+  const displayName = (data.user.user_metadata && data.user.user_metadata.username) || username;
+  showApp(displayName, data.user.id);
+});
+
+document.getElementById('signupForm').addEventListener('submit', async function(e){
+  e.preventDefault();
+  setAuthError('signupError', '');
+  if (!supabaseClient){
+    setAuthError('signupError', 'Supabase isn\'t configured yet — set SUPABASE_URL and SUPABASE_ANON_KEY in the code.');
+    return;
+  }
+  const username = document.getElementById('signupUsername').value.trim();
+  const password = document.getElementById('signupPassword').value;
+  const password2 = document.getElementById('signupPassword2').value;
+  const question = document.getElementById('signupQuestion').value;
+  const answer = document.getElementById('signupAnswer').value.trim();
+
+  if (!username || username.length < 3){ setAuthError('signupError', 'Username must be at least 3 characters.'); return; }
+  if (password.length < 6){ setAuthError('signupError', 'Password must be at least 6 characters.'); return; }
+  if (password !== password2){ setAuthError('signupError', 'Passwords don\'t match.'); return; }
+  if (!answer){ setAuthError('signupError', 'Enter an answer to your security question — you\'ll need it if you forget your password.'); return; }
+
+  const submitBtn = e.target.querySelector('.auth-submit');
+  submitBtn.disabled = true;
+  const { data, error } = await supabaseClient.auth.signUp({
+    email: usernameToEmail(username),
+    password,
+    options: { data: { username } }
+  });
+
+  if (error){
+    submitBtn.disabled = false;
+    if (/already registered|already exists/i.test(error.message)){
+      setAuthError('signupError', 'That username is already taken.');
+    } else {
+      setAuthError('signupError', error.message);
+    }
+    return;
+  }
+
+  if (data.session){
+    const { error: rpcErr } = await supabaseClient.rpc('set_security_answer', {
+      p_question: question,
+      p_answer: answer
+    });
+    submitBtn.disabled = false;
+    if (rpcErr) console.error('Could not save security question:', rpcErr);
+    showApp(username, data.user.id);
+  } else {
+    submitBtn.disabled = false;
+    setAuthError('signupError', 'Account created — log in below.');
+    document.getElementById('tabLogin').click();
+  }
+});
+
+/* ---------------------------------------------------------------
+   FORGOT PASSWORD — security question flow
+--------------------------------------------------------------- */
+let forgotStep = 1;
+
+function resetForgotForm(){
+  forgotStep = 1;
+  document.getElementById('forgotUsername').value = '';
+  document.getElementById('forgotAnswer').value = '';
+  document.getElementById('forgotNewPassword').value = '';
+  document.getElementById('forgotNewPassword2').value = '';
+  document.getElementById('forgotQuestionWrap').style.display = 'none';
+  document.getElementById('forgotUsername').disabled = false;
+  document.getElementById('forgotContinueBtn').textContent = 'Continue';
+  setAuthError('forgotError', '');
+  setAuthError('forgotSuccess', '');
+}
+
+document.getElementById('forgotPasswordLink').addEventListener('click', function(){
+  document.getElementById('loginForm').style.display = 'none';
+  document.getElementById('signupForm').style.display = 'none';
+  document.querySelector('.auth-tabs').style.display = 'none';
+  resetForgotForm();
+  document.getElementById('forgotForm').style.display = 'block';
+});
+
+document.getElementById('backToLoginLink').addEventListener('click', function(){
+  document.getElementById('forgotForm').style.display = 'none';
+  document.querySelector('.auth-tabs').style.display = 'flex';
+  document.getElementById('tabLogin').click();
+});
+
+document.getElementById('forgotContinueBtn').addEventListener('click', async function(){
+  setAuthError('forgotError', '');
+  setAuthError('forgotSuccess', '');
+  if (!supabaseClient){
+    setAuthError('forgotError', 'Supabase isn\'t configured yet.');
+    return;
+  }
+
+  if (forgotStep === 1){
+    const username = document.getElementById('forgotUsername').value.trim();
+    if (!username){ setAuthError('forgotError', 'Enter your username.'); return; }
+
+    this.disabled = true;
+    const { data: question, error } = await supabaseClient.rpc('get_security_question', { p_username: username });
+    this.disabled = false;
+
+    if (error){ setAuthError('forgotError', 'Something went wrong — try again.'); return; }
+    if (!question){ setAuthError('forgotError', 'No account or security question found for that username.'); return; }
+
+    document.getElementById('forgotQuestionLabel').textContent = question;
+    document.getElementById('forgotQuestionWrap').style.display = 'block';
+    document.getElementById('forgotUsername').disabled = true;
+    this.textContent = 'Reset password';
+    forgotStep = 2;
+    return;
+  }
+
+  // Step 2: submit answer + new password to the Edge Function
+  const username = document.getElementById('forgotUsername').value.trim();
+  const answer = document.getElementById('forgotAnswer').value.trim();
+  const newPassword = document.getElementById('forgotNewPassword').value;
+  const newPassword2 = document.getElementById('forgotNewPassword2').value;
+
+  if (!answer){ setAuthError('forgotError', 'Enter your answer.'); return; }
+  if (newPassword.length < 6){ setAuthError('forgotError', 'New password must be at least 6 characters.'); return; }
+  if (newPassword !== newPassword2){ setAuthError('forgotError', 'Passwords don\'t match.'); return; }
+
+  this.disabled = true;
+  try {
+    const res = await fetch(SUPABASE_URL + '/functions/v1/reset-password', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + SUPABASE_ANON_KEY
+      },
+      body: JSON.stringify({ username, answer, newPassword })
+    });
+    const result = await res.json();
+    this.disabled = false;
+
+    if (!res.ok){
+      setAuthError('forgotError', result.error || 'Could not reset password.');
+      return;
+    }
+    setAuthError('forgotSuccess', '✓ Password updated — you can log in now.');
+    setTimeout(() => document.getElementById('backToLoginLink').click(), 1500);
+  } catch (err){
+    this.disabled = false;
+    setAuthError('forgotError', 'Could not reach the reset service — check that the Edge Function is deployed.');
+  }
+});
+
+document.getElementById('logoutBtn').addEventListener('click', async function(){
+  if (supabaseClient) await supabaseClient.auth.signOut();
+  showAuthOverlay();
+});
+
+/* ---------------------------------------------------------------
+   CLOUD PERSISTENCE — saves the parsed workbook to a Supabase
+   table scoped to the logged-in user, and loads it back on login
+   so returning users don't have to re-upload. Requires a
+   'workbook_data' table with RLS (see setup notes).
+--------------------------------------------------------------- */
+function setCloudStatus(text, isErr){
+  const el = document.getElementById('cloudStatus');
+  if (!el) return;
+  el.textContent = text || '';
+  el.style.color = isErr ? 'var(--bad)' : 'var(--good)';
+}
+
+let _saveDebounceTimer = null;
+function saveWorkbookToCloudDebounced(){
+  clearTimeout(_saveDebounceTimer);
+  _saveDebounceTimer = setTimeout(saveWorkbookToCloud, 800);
+}
+
+async function saveWorkbookToCloud(){
+  if (!supabaseClient || !currentUserId) return;
+  setCloudStatus('Saving to your account…', false);
+  const payload = { employees, qualityData, supervisorOf, reference };
+  const { error } = await supabaseClient
+    .from('workbook_data')
+    .upsert({
+      user_id: currentUserId,
+      file_name: currentFileName,
+      payload,
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'user_id' });
+
+  if (error){
+    console.error(error);
+    setCloudStatus('Could not save to your account — ' + error.message, true);
+  } else {
+    setCloudStatus('✓ Saved to your account', false);
+  }
+}
+
+async function loadWorkbookFromCloud(){
+  if (!supabaseClient || !currentUserId) return;
+  const { data, error } = await supabaseClient
+    .from('workbook_data')
+    .select('*')
+    .eq('user_id', currentUserId)
+    .maybeSingle();
+
+  if (error){
+    console.error(error);
+    return;
+  }
+  if (!data || !data.payload) return;
+
+  employees = data.payload.employees || {};
+  qualityData = data.payload.qualityData || {};
+  supervisorOf = data.payload.supervisorOf || {};
+  if (data.payload.reference) reference = data.payload.reference;
+  currentFileName = data.file_name || null;
+
+  renderReferenceTable();
+  renderAll();
+
+  const statusEl = document.getElementById('fileStatus');
+  if (statusEl && currentFileName){
+    statusEl.textContent = '✓ Loaded your saved workbook (' + currentFileName + ') — ' + Object.keys(employees).length + ' employee(s)';
+    statusEl.className = 'file-status';
+  }
+  setCloudStatus('✓ Synced from your account', false);
+  saveWorkbookToCloudDebounced();
+}
+
+const DEFAULT_REFERENCE = {
+  "OCN":                       { target: 14.5, r5: 1.5385, r4: 1.2222, r3: 1.00, r2: 0.6667, r1: 0 },
+  "Outreach":                  { target: 9.5,  r5: 1.50,   r4: 1.2317, r3: 1.00, r2: 0.7779, r1: 0 },
+  "B vs D":                    { target: null, r5: 1.45,   r4: 1.2601, r3: 1.00, r2: 0.75,   r1: 0 },
+  "EDITS":                     { target: 8,    r5: 1.6663, r4: 1.4326, r3: 1.00, r2: 0.6838, r1: 0 },
+  "C&S Pharma Admin":          { target: null, r5: 1.5862, r4: 1.30,   r3: 1.00, r2: 0.7138, r1: 0 },
+  "C&S Appeals Verification":  { target: null, r5: 1.4178, r4: 1.2356, r3: 1.00, r2: 0.7733, r1: 0 },
+  "AV Commercial":             { target: null, r5: 1.4178, r4: 1.2356, r3: 1.00, r2: 0.7733, r1: 0 },
+  "Clinical Appeals":          { target: null, r5: 1.5094, r4: 1.3113, r3: 1.00, r2: 0.8622, r1: 0 },
+  "A&M - Cancellation WB":     { target: null, r5: 2.60,   r4: 1.9990, r3: 1.00, r2: 0.80,   r1: 0 },
+  "A&M - Cancellation SP":     { target: null, r5: 1.6667, r4: 1.4158, r3: 1.00, r2: 0.75,   r1: 0 },
+  "Outreach Denial":           { target: null, r5: 1.38,   r4: 1.19,   r3: 1.00, r2: 0.75,   r1: 0 },
+  "OBD Phone":                 { target: null, r5: 1.3587, r4: 1.1921, r3: 1.00, r2: 0.9239, r1: 0 },
+  "PartD_Phones":              { target: 500,  r5: 1.1788, r4: 1.0892, r3: 1.00, r2: 0.85,   r1: 0 },
+  "Gen_Phones":                { target: 515,  r5: 1.2675, r4: 1.0775, r3: 1.00, r2: 0.9349, r1: 0 },
+  "Fax":                       { target: 11,   r5: 1.2727, r4: 1.1682, r3: 1.00, r2: 0.8955, r1: 0 },
+  "GLP_1":                     { target: 15,   r5: 1.2733, r4: 1.1680, r3: 1.00, r2: 0.8950, r1: 0 },
+  "UHC_west":                  { target: 485,  r5: 1.1788, r4: 1.0891, r3: 1.00, r2: 0.8549, r1: 0 },
+  "Clinical Appeals Phone":    { target: null, r5: 1.1788, r4: 1.0891, r3: 1.00, r2: 0.8549, r1: 0 },
+  "Misroutes":                 { target: null, r5: 1.2741, r4: 1.1675, r3: 1.00, r2: 0.8934, r1: 0 }
+};
+
+let reference = {};
+let sheetsData = {};
+let employees = {};
+let qualityData = {};
+let attributesPerAudit = 23;
+let supervisorOf = {};
+let currentFileName = null;
+
+function normalizeKey(s){
+  return String(s || "").trim().toLowerCase().replace(/\s+/g,' ');
+}
+
+const LOWER_IS_BETTER_SKILLS = ['partd_phones', 'uhc_west', 'gen_phones'];
+function isLowerBetterSkill(skillName){
+  return LOWER_IS_BETTER_SKILLS.includes(normalizeKey(skillName).replace(/\s+/g, '_'));
+}
+
+document.getElementById('fileInput').addEventListener('change', function(e){
+  const file = e.target.files[0];
+  if (!file) return;
+  const statusEl = document.getElementById('fileStatus');
+  statusEl.textContent = 'Reading ' + file.name + '…';
+  statusEl.className = 'file-status';
+
+  const reader = new FileReader();
+  reader.onload = function(ev){
+    try{
+      const data = new Uint8Array(ev.target.result);
+      const wb = XLSX.read(data, { type: 'array' });
+      currentFileName = file.name;
+      parseWorkbook(wb);
+      statusEl.textContent = '✓ Loaded ' + file.name + ' — ' + wb.SheetNames.length + ' skill tab(s), ' + Object.keys(employees).length + ' employee(s)';
+      statusEl.className = 'file-status';
+    }catch(err){
+      console.error(err);
+      currentFileName = null;
+      statusEl.textContent = 'Could not read that file — ' + err.message;
+      statusEl.className = 'file-status err';
+    }
+  };
+  reader.readAsArrayBuffer(file);
+});
+
+function headerIndex(headers, keywords, excludeKeywords){
+  excludeKeywords = excludeKeywords || [];
+  for (let i=0;i<headers.length;i++){
+    const h = normalizeKey(headers[i]);
+    if (!h) continue;
+    if (excludeKeywords.some(x => h.includes(x))) continue;
+    if (keywords.some(k => h.includes(k))) return i;
+  }
+  return -1;
+}
+
+function parseWorkbook(wb){
+  sheetsData = {};
+  employees = {};
+  qualityData = {};
+  supervisorOf = {};
+
+  wb.SheetNames.forEach(tabName => {
+    const sheet = wb.Sheets[tabName];
+    const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+    if (!rows.length) return;
+
+    const headers = rows[0];
+
+    if (normalizeKey(tabName) === 'quality'){
+      parseQualityTab(headers, rows);
+      return;
+    }
+
+    const nameIdx       = headerIndex(headers, ['name','employee'], ['skill']);
+    const eidIdx        = headerIndex(headers, ['eid']);
+    const actualIdx     = headerIndex(headers, ['aht','case rate','actual']);
+    const hoursIdx      = headerIndex(headers, ['hour','hrs']);
+    const supervisorIdx = headerIndex(headers, ['supervisor']);
+
+    if (nameIdx === -1) return;
+
+    const skillName = String(tabName).trim();
+    if (!reference[skillName]){
+      const known = DEFAULT_REFERENCE[findObjKeyCaseInsensitive(DEFAULT_REFERENCE, skillName)];
+      reference[skillName] = known ? Object.assign({}, known) : { target: null, r5:null, r4:null, r3:1.00, r2:null, r1:0 };
+    }
+
+    const list = [];
+    for (let r=1; r<rows.length; r++){
+      const row = rows[r];
+      if (!row || row.length === 0) continue;
+      const nameVal = row[nameIdx];
+      if (!nameVal || String(nameVal).trim() === '') continue;
+      const actualVal = actualIdx !== -1 ? parseFloat(row[actualIdx]) : NaN;
+      const hoursVal = hoursIdx !== -1 ? parseFloat(row[hoursIdx]) : NaN;
+
+      const empName = String(nameVal).trim();
+      const eidVal = eidIdx !== -1 ? row[eidIdx] : '';
+      const empKey = (eidVal !== '' && eidVal !== null && eidVal !== undefined) ? String(eidVal).trim() : empName;
+      list.push({ name: empName, actual: isNaN(actualVal) ? null : actualVal, hours: isNaN(hoursVal) ? null : hoursVal });
+
+      if (!employees[empKey]) employees[empKey] = { name: empName, eid: empKey, skills: {} };
+      employees[empKey].skills[skillName] = {
+        actual: isNaN(actualVal) ? null : actualVal,
+        hours: isNaN(hoursVal) ? null : hoursVal
+      };
+
+      if (supervisorIdx !== -1){
+        const supervisorVal = row[supervisorIdx];
+        if (supervisorVal && String(supervisorVal).trim() !== ''){
+          supervisorOf[empKey] = String(supervisorVal).trim();
+        }
+      }
+    }
+    sheetsData[skillName] = list;
+  });
+
+  renderReferenceTable();
+  renderAll();
+  saveWorkbookToCloud();
+}
+
+function parseQualityTab(headers, rows){
+  const nameIdx       = headerIndex(headers, ['employee name','name'], ['supervisor']);
+  const eidIdx        = headerIndex(headers, ['eid']);
+  const supervisorIdx = headerIndex(headers, ['supervisor']);
+  const auditsIdx     = headerIndex(headers, ['audit']);
+  const under100Idx   = headerIndex(headers, ['<100','under 100','below 100','under100','below100']);
+  const markdownIdx   = headerIndex(headers, ['markdown']);
+
+  if (nameIdx === -1) return;
+
+  for (let r=1; r<rows.length; r++){
+    const row = rows[r];
+    if (!row || row.length === 0) continue;
+    const nameVal = row[nameIdx];
+    if (!nameVal || String(nameVal).trim() === '') continue;
+
+    const empName = String(nameVal).trim();
+    const eidVal = eidIdx !== -1 ? row[eidIdx] : '';
+    const empKey = (eidVal !== '' && eidVal !== null && eidVal !== undefined) ? String(eidVal).trim() : empName;
+
+    const supervisorVal = supervisorIdx !== -1 ? row[supervisorIdx] : '';
+    if (supervisorVal && String(supervisorVal).trim() !== ''){
+      supervisorOf[empKey] = String(supervisorVal).trim();
+    }
+    const audits = auditsIdx !== -1 ? parseFloat(row[auditsIdx]) : NaN;
+    const under100 = under100Idx !== -1 ? parseFloat(row[under100Idx]) : NaN;
+    const markdown = markdownIdx !== -1 ? parseFloat(row[markdownIdx]) : NaN;
+
+    if (!qualityData[empKey]){
+      qualityData[empKey] = { audits: 0, under100: 0, markdown: 0, hasData: false };
+    }
+    const q = qualityData[empKey];
+    if (!isNaN(audits)) { q.audits += audits; q.hasData = true; }
+    if (!isNaN(under100)) { q.under100 += under100; q.hasData = true; }
+    if (!isNaN(markdown)) { q.markdown += markdown; q.hasData = true; }
+  }
+}
+
+function findObjKeyCaseInsensitive(obj, key){
+  const norm = normalizeKey(key);
+  return Object.keys(obj).find(k => normalizeKey(k) === norm);
+}
+
+function seedDefaults(){
+  reference = {};
+  Object.keys(DEFAULT_REFERENCE).forEach(k => reference[k] = Object.assign({}, DEFAULT_REFERENCE[k]));
+}
+
+function computeSkillRating(ratio, ref){
+  const points = [
+    [ref.r1, 1], [ref.r2, 2], [ref.r3, 3], [ref.r4, 4], [ref.r5, 5]
+  ].filter(p => p[0] !== null && p[0] !== undefined && !isNaN(p[0]));
+
+  points.sort((a,b) => a[0]-b[0]);
+  if (points.length < 2) return null;
+
+  if (ratio <= points[0][0]){
+    return { rating: points[0][1], fractional: 0, lowerT: points[0][0], upperT: points[Math.min(1,points.length-1)][0], lowerRating: points[0][1], upperRating: points[Math.min(1,points.length-1)][1] };
+  }
+  if (ratio >= points[points.length-1][0]){
+    const last = points.length-1;
+    return { rating: points[last][1], fractional: 1, lowerT: points[last-1][0], upperT: points[last][0], lowerRating: points[last-1][1], upperRating: points[last][1] };
+  }
+  for (let i=0;i<points.length-1;i++){
+    const lowerT = points[i][0], upperT = points[i+1][0];
+    const lowerR = points[i][1], upperR = points[i+1][1];
+    // Bands whose upper rating is 3 or below (R1-R2, R2-R3) don't interpolate —
+    // the rating steps flat at the lower bound. Interpolation only kicks in
+    // once the ratio reaches the Rating 3 threshold (R3-R4, R4-R5 bands).
+    const isBelowThreeBand = upperR <= 3;
+    const inRange = isBelowThreeBand
+      ? (ratio >= lowerT && ratio < upperT)
+      : (ratio >= lowerT && ratio <= upperT);
+    if (inRange){
+      if (isBelowThreeBand){
+        return { rating: lowerR, fractional: 0, lowerT, upperT, lowerRating: lowerR, upperRating: upperR };
+      }
+      const span = upperT - lowerT;
+      let frac = span === 0 ? 0 : (ratio - lowerT) / span;
+      frac = Math.max(0, Math.min(1, frac));
+      const rating = lowerR + frac * (upperR - lowerR);
+      return { rating, fractional: frac, lowerT, upperT, lowerRating: lowerR, upperRating: upperR };
+    }
+  }
+  return null;
+}
+
+function computeEmployee(empKey){
+  const emp = employees[empKey];
+  const skillNames = Object.keys(emp.skills);
+  const totalHours = skillNames.reduce((sum, s) => {
+    const h = emp.skills[s].hours;
+    return sum + (h && h > 0 ? h : 0);
+  }, 0);
+
+  const rows = skillNames.map(skillName => {
+    const rowData = emp.skills[skillName];
+    const ref = reference[skillName] || {};
+    const missingRef = ref.target === null || ref.target === undefined || ref.r3 === null || ref.r3 === undefined
+      || ref.r5 === null || ref.r5 === undefined || ref.r2 === null || ref.r2 === undefined;
+    const missingActual = rowData.actual === null || rowData.actual === undefined;
+    const missingHours = rowData.hours === null || rowData.hours === undefined || rowData.hours <= 0;
+
+    let ratio = null, ratingInfo = null, weight = 0;
+    if (!missingRef && !missingActual && ref.target > 0){
+      if (isLowerBetterSkill(skillName)){
+        ratio = rowData.actual > 0 ? (ref.target / rowData.actual) : null;
+      } else {
+        ratio = rowData.actual / ref.target;
+      }
+      if (ratio !== null) ratingInfo = computeSkillRating(ratio, ref);
+    }
+    if (!missingHours && totalHours > 0){
+      weight = rowData.hours / totalHours;
+    }
+
+    return {
+      skillName, actual: rowData.actual, hours: rowData.hours, target: ref.target,
+      ratio, ratingInfo, weight,
+      weightedScore: ratingInfo ? ratingInfo.rating * weight : 0,
+      missing: missingRef || missingActual || missingHours
+    };
+  });
+
+  const finalRate = rows.reduce((sum, r) => sum + (isFinite(r.weightedScore) ? r.weightedScore : 0), 0);
+
+  const q = qualityData[empKey] || null;
+  let dpu = null, dpo = null;
+  if (q && q.hasData){
+    if (q.audits > 0) dpu = (q.audits - q.under100) / q.audits;
+    if (attributesPerAudit > 0 && q.audits > 0){
+      const totalAttributes = attributesPerAudit * q.audits;
+      dpo = (totalAttributes - q.markdown) / totalAttributes;
+    }
+  }
+
+  const hasMissing = rows.some(r => r.missing);
+
+  return { name: emp.name, eid: emp.eid, rows, finalRate, totalHours, dpu, dpo, quality: q, hasMissing };
+}
+
+function isPass(result){
+  return result.finalRate !== null && result.finalRate !== undefined && result.finalRate >= 2.99
+    && (result.dpu === null || result.dpu >= 0.95)
+    && (result.dpo === null || result.dpo >= 0.95);
+}
+
+function employeeStatus(result){
+  if (result.hasMissing || result.rows.length === 0) return 'missing';
+  return isPass(result) ? 'pass' : 'review';
+}
+
+/* Signature element: a 1-5 rating ladder (echoes the underlying threshold
+   scale the whole calculation is built on) with a marker at the employee's
+   Final Production Rate, instead of a generic progress bar. */
+function ratingLadderSvg(rate, passes){
+  const w = 148, h = 28;
+  const x0 = 10, x1 = 138;
+  const val = rate === null || rate === undefined ? null : Math.max(1, Math.min(5, rate));
+  const xFor = v => x0 + ((v - 1) / 4) * (x1 - x0);
+  const color = passes ? 'var(--good)' : 'var(--bad)';
+
+  let ticks = '';
+  for (let v = 1; v <= 5; v++){
+    const tx = xFor(v);
+    ticks += `<line class="rl-tick" x1="${tx}" y1="12" x2="${tx}" y2="18"/>`;
+  }
+
+  const markerX = val !== null ? xFor(val) : x0;
+  const fill = val !== null
+    ? `<line class="rl-fill" x1="${x0}" y1="15" x2="${markerX}" y2="15" stroke="${color}"/>`
+    : '';
+  const marker = val !== null
+    ? `<circle cx="${markerX}" cy="15" r="3.4" fill="${color}" stroke="white" stroke-width="1.2"/>`
+    : '';
+
+  return `<svg viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg">
+    <line class="rl-baseline" x1="${x0}" y1="15" x2="${x1}" y2="15"/>
+    ${ticks}
+    ${fill}
+    ${marker}
+    <text class="rl-num" x="${x0}" y="27" text-anchor="middle">1</text>
+    <text class="rl-num" x="${x1}" y="27" text-anchor="middle">5</text>
+  </svg>`;
+}
+
+function renderAll(){
+  renderSummary();
+  renderEmployees();
+  renderParSidebar();
+}
+
+function renderSummary(){
+  const allKeys = Object.keys(employees);
+  const exportBtn = document.getElementById('exportBtn');
+
+  if (allKeys.length === 0){
+    document.getElementById('teamRateStat').textContent = '—';
+    document.getElementById('teamRateSub').textContent = 'Upload a workbook to see results.';
+    document.getElementById('passingCount').textContent = '0';
+    document.getElementById('reviewCount').textContent = '0';
+    document.getElementById('missingCount').textContent = '0';
+    exportBtn.disabled = true;
+    updateTeamGauge(null);
+    return;
+  }
+
+  const filterEl = document.getElementById('supervisorFilter');
+  const activeFilter = filterEl ? filterEl.value : '';
+  const keys = activeFilter
+    ? allKeys.filter(k => (supervisorOf[k] || 'Unassigned') === activeFilter)
+    : allKeys;
+
+  let passCount = 0, reviewCount = 0, missingCount = 0;
+
+  keys.forEach(name => {
+    const result = computeEmployee(name);
+    const status = employeeStatus(result);
+    if (status === 'pass') passCount++;
+    else if (status === 'review') reviewCount++;
+    else missingCount++;
+  });
+
+  const passRate = keys.length > 0 ? (passCount / keys.length * 100) : null;
+  document.getElementById('teamRateStat').textContent = passRate !== null ? passRate.toFixed(1) + '%' : '—';
+  updateTeamGauge(passRate);
+  const scopeLabel = activeFilter ? ('under ' + activeFilter) : '';
+  document.getElementById('teamRateSub').textContent = keys.length + ' employee' + (keys.length===1?'':'s') + (scopeLabel ? ' ' + scopeLabel : '') + ' · results based on the latest uploaded workbook';
+  document.getElementById('passingCount').textContent = passCount;
+  document.getElementById('reviewCount').textContent = reviewCount;
+  document.getElementById('missingCount').textContent = missingCount;
+  exportBtn.disabled = false;
+}
+
+function updateTeamGauge(pct){
+  const path = document.getElementById('teamGaugeValue');
+  const label = document.getElementById('teamGaugeLabel');
+  if (!path || !label) return;
+  const totalLen = 251.3; // half-circle circumference for r=80
+  const clamped = pct === null || pct === undefined ? 0 : Math.max(0, Math.min(100, pct));
+  const valueLen = (clamped / 100) * totalLen;
+  path.setAttribute('stroke-dasharray', valueLen.toFixed(1) + ' ' + totalLen);
+  label.textContent = pct === null || pct === undefined ? 'No data' : clamped.toFixed(1) + '% passing';
+}
+
+function renderParSidebar(){
+  const listEl = document.getElementById('parList');
+  if (!listEl) return;
+
+  const names = Object.keys(employees);
+  if (names.length === 0){
+    listEl.innerHTML = '<div class="par-empty">Upload a workbook to see PAR by supervisor.</div>';
+    return;
+  }
+
+  const bySupervisor = {};
+  names.forEach(name => {
+    const supervisor = supervisorOf[name] || 'Unassigned';
+    const result = computeEmployee(name);
+    if (!bySupervisor[supervisor]) bySupervisor[supervisor] = { total: 0, pass: 0 };
+    bySupervisor[supervisor].total += 1;
+    if (isPass(result)) bySupervisor[supervisor].pass += 1;
+  });
+
+  const filterEl = document.getElementById('supervisorFilter');
+  const activeFilter = filterEl ? filterEl.value : '';
+
+  let supervisors = Object.keys(bySupervisor).sort((a,b) => a.localeCompare(b));
+  if (activeFilter) supervisors = supervisors.filter(s => s === activeFilter);
+
+  if (supervisors.length === 0){
+    listEl.innerHTML = '<div class="par-empty">No data for that supervisor.</div>';
+    return;
+  }
+
+  listEl.innerHTML = supervisors.map(sup => {
+    const { total, pass } = bySupervisor[sup];
+    const pct = total > 0 ? (pass/total*100) : 0;
+    return `<div class="par-row">
+      <div>
+        <div class="par-name">${escapeHtml(sup)}</div>
+        <span class="par-count">${pass}/${total} pass</span>
+      </div>
+      <div class="par-pct">${pct.toFixed(0)}%</div>
+    </div>`;
+  }).join('');
+}
+
+function renderReferenceTable(){
+  const body = document.getElementById('refTableBody');
+  const allSkillNames = Object.keys(reference).sort((a,b)=>a.localeCompare(b));
+  const skillNames = allSkillNames.filter(skillName => {
+    const ref = reference[skillName];
+    return ref.target !== null && ref.target !== undefined
+      && ref.r3 !== null && ref.r5 !== null && ref.r2 !== null;
+  });
+  body.innerHTML = '';
+
+  if (allSkillNames.length === 0){
+    body.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--ink-soft);padding:20px;font-family:var(--r-body);">Upload a workbook, or thresholds will populate once tabs are read.</td></tr>';
+    return;
+  }
+
+  if (skillNames.length === 0){
+    body.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--ink-soft);padding:20px;font-family:var(--r-body);">No configured skills yet.</td></tr>';
+    return;
+  }
+
+  skillNames.forEach(skillName => {
+    const ref = reference[skillName];
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="skillname">${escapeHtml(skillName)}</td>
+      ${fieldInput(skillName,'target',ref.target)}
+      ${fieldInput(skillName,'r5',ref.r5)}
+      ${fieldInput(skillName,'r4',ref.r4)}
+      ${fieldInput(skillName,'r3',ref.r3)}
+      ${fieldInput(skillName,'r2',ref.r2)}
+      ${fieldInput(skillName,'r1',ref.r1)}
+      <td><span class="badge-configured">configured</span></td>
+    `;
+    body.appendChild(tr);
+  });
+
+  body.querySelectorAll('input[data-skill][data-field]').forEach(input => {
+    input.addEventListener('input', onRefFieldChange);
+  });
+}
+
+function fieldInput(skillName, field, value){
+  const isPct = field.startsWith('r');
+  const displayVal = value === null || value === undefined ? '' : (isPct ? (value*100).toFixed(2) : value);
+  const missingCls = (value === null || value === undefined) ? 'missing' : '';
+  return `<td><input class="${missingCls}" type="number" step="any" data-skill="${escapeAttr(skillName)}" data-field="${field}" value="${displayVal}" placeholder="${isPct ? '%' : '#'}" /></td>`;
+}
+
+function onRefFieldChange(e){
+  const skill = e.target.getAttribute('data-skill');
+  const field = e.target.getAttribute('data-field');
+  const raw = e.target.value;
+  if (raw === ''){
+    reference[skill][field] = (field === 'r1') ? 0 : null;
+  } else {
+    const num = parseFloat(raw);
+    reference[skill][field] = field.startsWith('r') ? num/100 : num;
+  }
+  e.target.classList.toggle('missing', reference[skill][field] === null || reference[skill][field] === undefined);
+  renderReferenceTable();
+  renderAll();
+  saveWorkbookToCloudDebounced();
+}
+
+function populateSupervisorFilter(keys, selectEl){
+  const supervisors = Array.from(new Set(keys.map(k => supervisorOf[k] || 'Unassigned'))).sort((a,b)=>a.localeCompare(b));
+  const current = selectEl.value;
+  const optionsHtml = ['<option value="">All supervisors</option>']
+    .concat(supervisors.map(s => `<option value="${escapeAttr(s)}">${escapeHtml(s)}</option>`));
+  const newHtml = optionsHtml.join('');
+  if (selectEl.dataset.optionsHtml !== newHtml){
+    selectEl.innerHTML = newHtml;
+    selectEl.dataset.optionsHtml = newHtml;
+    if (supervisors.includes(current)) selectEl.value = current;
+  }
+}
+
+function renderEmployees(){
+  const listEl = document.getElementById('empList');
+  const searchTerm = normalizeKey(document.getElementById('searchInput').value);
+  const sortMode = document.getElementById('sortSelect').value;
+  const supervisorFilterEl = document.getElementById('supervisorFilter');
+  const supervisorFilter = supervisorFilterEl.value;
+
+  let keys = Object.keys(employees);
+  if (keys.length === 0){
+    listEl.innerHTML = `<div class="empty-state"><b>No employees yet</b>Upload the skill-tab workbook above to populate this list.</div>`;
+    return;
+  }
+
+  populateSupervisorFilter(keys, supervisorFilterEl);
+
+  const computed = keys.map(k => ({ key: k, result: computeEmployee(k), supervisor: supervisorOf[k] || 'Unassigned' }));
+  let filtered = computed.filter(c => normalizeKey(c.result.name).includes(searchTerm));
+  if (supervisorFilter){
+    filtered = filtered.filter(c => c.supervisor === supervisorFilter);
+  }
+
+  filtered.sort((a,b) => {
+    if (sortMode === 'rate-desc') return b.result.finalRate - a.result.finalRate;
+    if (sortMode === 'rate-asc') return a.result.finalRate - b.result.finalRate;
+    return a.result.name.localeCompare(b.result.name);
+  });
+
+  listEl.innerHTML = '';
+  const listWrap = document.createElement('div');
+  listWrap.className = 'emp-list';
+
+  filtered.forEach(({key, result}) => {
+    const name = result.name;
+    const card = document.createElement('div');
+    card.className = 'emp-card';
+
+    const skillText = result.rows.map(r =>
+      `<span class="${r.missing ? 'miss' : ''}">${escapeHtml(r.skillName)} ${r.ratingInfo ? r.ratingInfo.rating.toFixed(2) : '—'}</span>`
+    ).join(' · ');
+
+    const detailRows = result.rows.map(r => {
+      const ratio = r.ratio !== null ? r.ratio.toFixed(4) : '—';
+      const rating = r.ratingInfo ? r.ratingInfo.rating.toFixed(3) : '—';
+      const frac = r.ratingInfo ? r.ratingInfo.fractional.toFixed(3) : '—';
+      const minT = r.ratingInfo ? r.ratingInfo.lowerT.toFixed(4) : '—';
+      const maxT = r.ratingInfo ? r.ratingInfo.upperT.toFixed(4) : '—';
+      const weight = (r.weight*100).toFixed(1) + '%';
+      const wscore = r.ratingInfo ? r.weightedScore.toFixed(3) : '—';
+      return `<tr class="${r.missing ? 'miss' : ''}">
+        <td class="skillname">${escapeHtml(r.skillName)}</td>
+        <td>${r.actual ?? '—'}</td>
+        <td>${r.target ?? '—'}</td>
+        <td>${ratio}</td>
+        <td>${minT}</td>
+        <td>${maxT}</td>
+        <td>${frac}</td>
+        <td>${rating}</td>
+        <td>${weight}</td>
+        <td>${wscore}</td>
+      </tr>`;
+    }).join('');
+
+    const dpuTxt = result.dpu !== null ? (result.dpu*100).toFixed(2) + '%' : '—';
+    const dpoTxt = result.dpo !== null ? (result.dpo*100).toFixed(2) + '%' : '—';
+    const qualityLine = result.quality && result.quality.hasData
+      ? `<span>Audits: ${result.quality.audits} · &lt;100: ${result.quality.under100} · Markdown: ${result.quality.markdown}</span><span>DPU: <b style="color:var(--navy)">${dpuTxt}</b> &nbsp; DPO: <b style="color:var(--navy)">${dpoTxt}</b></span>`
+      : `<span>No quality data for this employee</span>`;
+
+    const passes = isPass(result);
+
+    card.innerHTML = `
+      <div class="emp-row" data-toggle>
+        <span class="chev">▸</span>
+        <div class="emp-name">${escapeHtml(name)}</div>
+        <div class="emp-skills">${skillText || '—'}</div>
+        <div class="rating-ladder">${ratingLadderSvg(result.finalRate, passes)}</div>
+        <div class="rate-wrap">
+          <span class="rate-num ${passes ? 'pass' : 'fail'}">${result.finalRate ? result.finalRate.toFixed(2) : '—'}</span>
+          <span class="rate-status ${passes ? 'pass' : 'fail'}">${passes ? 'Pass' : 'Fail'}</span>
+        </div>
+      </div>
+      <div class="emp-detail">
+        <table class="detail">
+          <thead>
+            <tr>
+              <th>Skill</th><th>Actual</th><th>Target</th><th>Ratio</th>
+              <th>Min Thr</th><th>Max Thr</th><th>Frac.</th><th>Rating</th>
+              <th>Weight</th><th>Weighted</th>
+            </tr>
+          </thead>
+          <tbody>${detailRows}</tbody>
+        </table>
+        <div class="quality-line">${qualityLine}</div>
+        <div class="final-line">
+          <span>Total production hours: ${result.totalHours || 0}</span>
+          <b>Final Production Rate: ${result.finalRate ? result.finalRate.toFixed(3) : '—'}</b>
+        </div>
+      </div>
+    `;
+    card.querySelector('[data-toggle]').addEventListener('click', () => {
+      card.classList.toggle('open');
+    });
+    listWrap.appendChild(card);
+  });
+
+  listEl.appendChild(listWrap);
+}
+
+function sanitizeSheetName(name){
+  return String(name).replace(/[:\\\/\?\*\[\]]/g, ' ').slice(0, 31).trim() || 'Sheet';
+}
+
+function generateTemplate(){
+  const wb = XLSX.utils.book_new();
+  const skillHeaders = ['Supervisor', 'EID', 'Employee Name', 'AHT / Case Rate', 'ProdHrs'];
+  const qualityHeaders = ['Supervisor', 'EID', 'Employee Name', '# of Audits', 'Quality Score', '# of Markdown', '# of <100'];
+
+  const qualityWs = XLSX.utils.aoa_to_sheet([qualityHeaders]);
+  XLSX.utils.book_append_sheet(wb, qualityWs, 'Quality');
+
+  const skillNames = Object.keys(reference).sort((a,b) => a.localeCompare(b));
+  const usedNames = new Set(['quality']);
+
+  skillNames.forEach(skillName => {
+    let sheetName = sanitizeSheetName(skillName);
+    let n = 1;
+    while (usedNames.has(sheetName.toLowerCase())){ sheetName = sanitizeSheetName(skillName).slice(0,28) + '_' + (++n); }
+    usedNames.add(sheetName.toLowerCase());
+    const ws = XLSX.utils.aoa_to_sheet([skillHeaders]);
+    XLSX.utils.book_append_sheet(wb, ws, sheetName);
+  });
+
+  XLSX.writeFile(wb, 'Prod_Calculation_Template.xlsx');
+}
+
+function exportReport(){
+  const keys = Object.keys(employees);
+  if (keys.length === 0) return;
+
+  const header = ['Employee','EID','Supervisor','Final Production Rate','DPU','DPO','Status'];
+  const lines = [header.join(',')];
+
+  keys.map(k => computeEmployee(k))
+    .sort((a,b)=>a.name.localeCompare(b.name))
+    .forEach(result => {
+      const status = employeeStatus(result);
+      const statusLabel = status === 'pass' ? 'Pass' : status === 'review' ? 'Needs Review' : 'Missing Data';
+      const row = [
+        csvEscape(result.name),
+        csvEscape(result.eid),
+        csvEscape(supervisorOf[result.eid] || 'Unassigned'),
+        result.finalRate !== null ? result.finalRate.toFixed(3) : '',
+        result.dpu !== null ? (result.dpu*100).toFixed(2)+'%' : '',
+        result.dpo !== null ? (result.dpo*100).toFixed(2)+'%' : '',
+        statusLabel
+      ];
+      lines.push(row.join(','));
+    });
+
+  const csv = lines.join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'production_overview_report.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function csvEscape(val){
+  const s = String(val ?? '');
+  return /[",\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s;
+}
+
+function escapeHtml(str){
+  return String(str).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+function escapeAttr(str){ return escapeHtml(str); }
+
+document.getElementById('searchInput').addEventListener('input', renderEmployees);
+document.getElementById('sortSelect').addEventListener('change', renderEmployees);
+document.getElementById('supervisorFilter').addEventListener('change', function(){
+  renderSummary();
+  renderEmployees();
+  renderParSidebar();
+});
+document.getElementById('exportBtn').addEventListener('click', exportReport);
+document.getElementById('templateBtn').addEventListener('click', generateTemplate);
+document.getElementById('refBlockHead').addEventListener('click', function(){
+  const wrap = document.getElementById('refTableWrap');
+  const chevron = document.getElementById('refChevron');
+  const isOpen = wrap.style.display !== 'none';
+  wrap.style.display = isOpen ? 'none' : 'block';
+  chevron.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(90deg)';
+});
+
+/* ---------------------------------------------------------------
+   DATA ASSISTANT — answers questions about the loaded workbook
+   using local pattern matching over the already-computed results.
+   This does not call any external AI service.
+--------------------------------------------------------------- */
+let _chatMsgCounter = 0;
+function appendChatMessage(text, who){
+  const body = document.getElementById('chatBody');
+  const msg = document.createElement('div');
+  msg.className = 'chat-msg ' + (who === 'user' ? 'user' : 'bot');
+  msg.textContent = text;
+  const id = 'chatmsg-' + (++_chatMsgCounter);
+  msg.id = id;
+  body.appendChild(msg);
+  body.scrollTop = body.scrollHeight;
+  return id;
+}
+
+function removeChatMessage(id){
+  const el = document.getElementById(id);
+  if (el) el.remove();
+}
+
+function allEmployeeResults(){
+  return Object.keys(employees).map(k => ({
+    key: k,
+    result: computeEmployee(k),
+    supervisor: supervisorOf[k] || 'Unassigned'
+  }));
+}
+
+/* ---- fuzzy helpers ---- */
+function levenshtein(a, b){
+  const m = a.length, n = b.length;
+  if (m === 0) return n;
+  if (n === 0) return m;
+  const dp = Array.from({length: m+1}, (_, i) => [i, ...Array(n).fill(0)]);
+  for (let j=0; j<=n; j++) dp[0][j] = j;
+  for (let i=1; i<=m; i++){
+    for (let j=1; j<=n; j++){
+      dp[i][j] = a[i-1] === b[j-1]
+        ? dp[i-1][j-1]
+        : 1 + Math.min(dp[i-1][j-1], dp[i-1][j], dp[i][j-1]);
+    }
+  }
+  return dp[m][n];
+}
+
+function findEmployeeMatch(norm, rows){
+  // exact/substring match first
+  let hit = rows.find(r => r.result.name && norm.includes(normalizeKey(r.result.name)));
+  if (hit) return hit;
+
+  // token-level match: any word in the query matches a word in the name (typo-tolerant)
+  const queryWords = norm.split(' ').filter(w => w.length >= 3);
+  let best = null, bestScore = Infinity;
+  rows.forEach(r => {
+    const nameWords = normalizeKey(r.result.name).split(/[\s,]+/).filter(w => w.length >= 3);
+    nameWords.forEach(nw => {
+      queryWords.forEach(qw => {
+        const dist = levenshtein(nw, qw);
+        // allow small edit distance relative to word length (typo tolerance)
+        const threshold = nw.length <= 4 ? 1 : 2;
+        if (dist <= threshold && dist < bestScore){
+          bestScore = dist;
+          best = r;
+        }
+      });
+    });
+  });
+  return best;
+}
+
+function findSkillMatch(norm){
+  const skillNames = Object.keys(reference);
+  let hit = skillNames.find(s => norm.includes(normalizeKey(s)));
+  if (hit) return hit;
+  // loose match ignoring underscores/spaces
+  hit = skillNames.find(s => norm.replace(/[_\s]/g,'').includes(normalizeKey(s).replace(/[_\s]/g,'')));
+  return hit || null;
+}
+
+function parseTopN(norm){
+  const m = norm.match(/(top|bottom)\s*(\d+)/);
+  if (!m) return null;
+  return { direction: m[1], n: Math.max(1, Math.min(50, parseInt(m[2], 10))) };
+}
+
+function formatEmployeeLine(r){
+  const passes = isPass(r.result);
+  return `${r.result.name} — ${r.result.finalRate.toFixed(2)} (${passes ? 'Pass' : 'Fail'}, ${r.supervisor})`;
+}
+
+function answerQuery(q){
+  const norm = normalizeKey(q);
+  const rows = allEmployeeResults();
+
+  if (rows.length === 0){
+    return "I don't have any data yet — upload a workbook first.";
+  }
+
+  /* ---- methodology/explanation questions always go to the AI, which has
+     the full calculation rules — don't let local keyword rules (like a
+     name or "dpo") intercept these first ---- */
+  const isExplanationQuestion = /\bhow\b.*(calculat|work|formula|comput|figure|derive)|\bexplain\b|walk me through|walk.*through|why (does|is|would|did)|what is the formula|how come/.test(norm);
+  if (isExplanationQuestion) return null;
+
+  /* ---- comparison: "compare X and Y" / "X vs Y" ---- */
+  const compareSplit = norm.split(/\bvs\b|\bversus\b|\band\b/).map(s => s.trim()).filter(Boolean);
+  if (/compare|vs\b|versus/.test(norm) && compareSplit.length >= 2){
+    const a = findEmployeeMatch(compareSplit[0], rows);
+    const b = findEmployeeMatch(compareSplit[compareSplit.length - 1], rows);
+    if (a && b && a.key !== b.key){
+      return `${a.result.name}: ${a.result.finalRate.toFixed(2)} (${isPass(a.result) ? 'Pass' : 'Fail'}) vs ${b.result.name}: ${b.result.finalRate.toFixed(2)} (${isPass(b.result) ? 'Pass' : 'Fail'}). ` +
+        `DPU: ${a.result.dpu !== null ? (a.result.dpu*100).toFixed(1)+'%' : '—'} vs ${b.result.dpu !== null ? (b.result.dpu*100).toFixed(1)+'%' : '—'}. ` +
+        `DPO: ${a.result.dpo !== null ? (a.result.dpo*100).toFixed(1)+'%' : '—'} vs ${b.result.dpo !== null ? (b.result.dpo*100).toFixed(1)+'%' : '—'}.`;
+    }
+  }
+
+  /* ---- top N / bottom N ---- */
+  const topN = parseTopN(norm);
+  if (topN){
+    const sorted = [...rows].sort((a,b) => topN.direction === 'top'
+      ? b.result.finalRate - a.result.finalRate
+      : a.result.finalRate - b.result.finalRate);
+    const slice = sorted.slice(0, topN.n);
+    return `${topN.direction === 'top' ? 'Top' : 'Bottom'} ${slice.length} by Final Production Rate:\n` +
+      slice.map((r,i) => `${i+1}. ${formatEmployeeLine(r)}`).join('\n');
+  }
+
+  /* ---- skill-specific queries ---- */
+  const skillHit = findSkillMatch(norm);
+  if (skillHit){
+    const withSkill = rows
+      .map(r => ({ r, row: r.result.rows.find(s => s.skillName === skillHit) }))
+      .filter(x => x.row && x.row.ratingInfo);
+
+    if (withSkill.length === 0){
+      return `No employees currently have a rated "${skillHit}" entry.`;
+    }
+    if (/lowest|worst/.test(norm)){
+      withSkill.sort((a,b) => a.row.ratingInfo.rating - b.row.ratingInfo.rating);
+      const w = withSkill[0];
+      return `${w.r.result.name} has the lowest ${skillHit} rating at ${w.row.ratingInfo.rating.toFixed(2)} (Actual ${w.row.actual}, Target ${w.row.target}).`;
+    }
+    if (/highest|best|top/.test(norm)){
+      withSkill.sort((a,b) => b.row.ratingInfo.rating - a.row.ratingInfo.rating);
+      const w = withSkill[0];
+      return `${w.r.result.name} has the highest ${skillHit} rating at ${w.row.ratingInfo.rating.toFixed(2)} (Actual ${w.row.actual}, Target ${w.row.target}).`;
+    }
+    if (/average|avg/.test(norm)){
+      const avg = withSkill.reduce((s,x) => s + x.row.ratingInfo.rating, 0) / withSkill.length;
+      return `Average ${skillHit} rating is ${avg.toFixed(2)} across ${withSkill.length} employee(s).`;
+    }
+    if (/who.*(fail|below|under)|failing/.test(norm)){
+      const below3 = withSkill.filter(x => x.row.ratingInfo.rating < 3);
+      return below3.length
+        ? `${below3.length} employee(s) rated below 3 on ${skillHit}: ${below3.map(x => x.r.result.name + ' (' + x.row.ratingInfo.rating.toFixed(2) + ')').join(', ')}.`
+        : `Everyone with a ${skillHit} entry is rated 3.0 or above.`;
+    }
+    // default: list everyone's rating for that skill
+    withSkill.sort((a,b) => b.row.ratingInfo.rating - a.row.ratingInfo.rating);
+    return `${skillHit} ratings (${withSkill.length} employee(s)):\n` +
+      withSkill.slice(0, 15).map(x => `${x.r.result.name}: ${x.row.ratingInfo.rating.toFixed(2)}`).join('\n') +
+      (withSkill.length > 15 ? `\n…and ${withSkill.length - 15} more.` : '');
+  }
+
+  /* ---- DPU / DPO specific ---- */
+  if (/dpu/.test(norm) && !findEmployeeMatch(norm, rows)){
+    const withDpu = rows.filter(r => r.result.dpu !== null);
+    if (withDpu.length === 0) return 'No employees currently have DPU data.';
+    if (/lowest|worst/.test(norm)){
+      withDpu.sort((a,b) => a.result.dpu - b.result.dpu);
+      return `${withDpu[0].result.name} has the lowest DPU at ${(withDpu[0].result.dpu*100).toFixed(1)}%.`;
+    }
+    if (/highest|best/.test(norm)){
+      withDpu.sort((a,b) => b.result.dpu - a.result.dpu);
+      return `${withDpu[0].result.name} has the highest DPU at ${(withDpu[0].result.dpu*100).toFixed(1)}%.`;
+    }
+    const avg = withDpu.reduce((s,r) => s + r.result.dpu, 0) / withDpu.length;
+    return `Average DPU is ${(avg*100).toFixed(1)}% across ${withDpu.length} employee(s).`;
+  }
+  if (/dpo/.test(norm) && !findEmployeeMatch(norm, rows)){
+    const withDpo = rows.filter(r => r.result.dpo !== null);
+    if (withDpo.length === 0) return 'No employees currently have DPO data.';
+    if (/lowest|worst/.test(norm)){
+      withDpo.sort((a,b) => a.result.dpo - b.result.dpo);
+      return `${withDpo[0].result.name} has the lowest DPO at ${(withDpo[0].result.dpo*100).toFixed(1)}%.`;
+    }
+    if (/highest|best/.test(norm)){
+      withDpo.sort((a,b) => b.result.dpo - a.result.dpo);
+      return `${withDpo[0].result.name} has the highest DPO at ${(withDpo[0].result.dpo*100).toFixed(1)}%.`;
+    }
+    const avg = withDpo.reduce((s,r) => s + r.result.dpo, 0) / withDpo.length;
+    return `Average DPO is ${(avg*100).toFixed(1)}% across ${withDpo.length} employee(s).`;
+  }
+
+  /* ---- employee lookup (exact or fuzzy) ---- */
+  const nameMatch = findEmployeeMatch(norm, rows);
+  if (nameMatch){
+    const r = nameMatch.result;
+    const passes = isPass(r);
+    const parts = [`${r.name}'s Final Production Rate is ${r.finalRate.toFixed(2)} (${passes ? 'Pass' : 'Fail'}).`];
+    if (r.dpu !== null) parts.push(`DPU is ${(r.dpu*100).toFixed(1)}%.`);
+    if (r.dpo !== null) parts.push(`DPO is ${(r.dpo*100).toFixed(1)}%.`);
+    parts.push(`Supervisor: ${nameMatch.supervisor}.`);
+    if (r.rows.length){
+      parts.push('Skills: ' + r.rows.map(s => `${s.skillName} ${s.ratingInfo ? s.ratingInfo.rating.toFixed(2) : '—'}`).join(', ') + '.');
+    }
+    return parts.join(' ');
+  }
+
+  /* ---- supervisor queries ---- */
+  const supervisors = Array.from(new Set(rows.map(r => r.supervisor)));
+  const supMatch = supervisors.find(s => norm.includes(normalizeKey(s)));
+  if (supMatch){
+    const team = rows.filter(r => r.supervisor === supMatch);
+    if (/list|who|team|roster/.test(norm)){
+      return `${supMatch}'s team (${team.length}):\n` + team.map(formatEmployeeLine).join('\n');
+    }
+    const passCount = team.filter(r => isPass(r.result)).length;
+    const pct = team.length ? (passCount/team.length*100) : 0;
+    return `${supMatch} supervises ${team.length} employee(s) — PAR is ${pct.toFixed(0)}% (${passCount}/${team.length} passing).`;
+  }
+  if (/list.*supervisor|supervisors\b/.test(norm) && !/for|under/.test(norm)){
+    const counts = supervisors.map(s => ({ s, n: rows.filter(r => r.supervisor === s).length }));
+    counts.sort((a,b) => b.n - a.n);
+    return `Supervisors (${supervisors.length}):\n` + counts.map(c => `${c.s}: ${c.n} employee(s)`).join('\n');
+  }
+
+  /* ---- listing failing/passing/missing by name ---- */
+  if (/list|who/.test(norm) && /fail|review/.test(norm)){
+    const list = rows.filter(r => employeeStatus(r.result) === 'review');
+    return list.length
+      ? `${list.length} employee(s) needing review:\n` + list.map(formatEmployeeLine).join('\n')
+      : 'No one is currently in Needs Review.';
+  }
+  if (/list|who/.test(norm) && /pass/.test(norm)){
+    const list = rows.filter(r => employeeStatus(r.result) === 'pass');
+    return list.length
+      ? `${list.length} employee(s) passing:\n` + list.slice(0, 20).map(formatEmployeeLine).join('\n') + (list.length > 20 ? `\n…and ${list.length - 20} more.` : '')
+      : 'No one is currently passing.';
+  }
+
+  if (/highest|top|best/.test(norm)){
+    const sorted = [...rows].sort((a,b) => b.result.finalRate - a.result.finalRate);
+    const top = sorted[0];
+    return `${top.result.name} has the highest Final Production Rate at ${top.result.finalRate.toFixed(2)}.`;
+  }
+
+  if (/lowest|worst|bottom/.test(norm)){
+    const sorted = [...rows].sort((a,b) => a.result.finalRate - b.result.finalRate);
+    const bottom = sorted[0];
+    return `${bottom.result.name} has the lowest Final Production Rate at ${bottom.result.finalRate.toFixed(2)}.`;
+  }
+
+  if (/how many.*pass|passing/.test(norm)){
+    const c = rows.filter(r => employeeStatus(r.result) === 'pass').length;
+    return `${c} of ${rows.length} employees are currently passing.`;
+  }
+
+  if (/how many.*fail|failing|needs review/.test(norm)){
+    const c = rows.filter(r => employeeStatus(r.result) === 'review').length;
+    return `${c} employee(s) are in Needs Review (below the pass criteria).`;
+  }
+
+  if (/missing/.test(norm)){
+    const missing = rows.filter(r => employeeStatus(r.result) === 'missing');
+    return missing.length
+      ? `${missing.length} employee(s) have missing data: ${missing.map(r => r.result.name).join(', ')}.`
+      : 'No employees currently have missing data.';
+  }
+
+  if (/average|team rate|overall/.test(norm)){
+    const valid = rows.filter(r => !r.result.hasMissing);
+    const avg = valid.length ? valid.reduce((s,r) => s + r.result.finalRate, 0) / valid.length : 0;
+    return `The average Final Production Rate is ${avg.toFixed(2)} across ${valid.length} employee(s) with complete data.`;
+  }
+
+  if (/how many employee|headcount|total/.test(norm)){
+    return `There are ${rows.length} employee(s) in the loaded workbook.`;
+  }
+
+  return null;
+}
+
+/* ---------------------------------------------------------------
+   AI FALLBACK — when no local rule matches, ask Gemini via a
+   Supabase Edge Function (which holds the API key server-side).
+--------------------------------------------------------------- */
+function buildDataContext(){
+  const rows = allEmployeeResults();
+  if (rows.length === 0) return '';
+  const MAX_ROWS = 200;
+  const lines = rows.slice(0, MAX_ROWS).map(r => {
+    const passes = isPass(r.result);
+    const skills = r.result.rows.map(s => s.skillName + ' ' + (s.ratingInfo ? s.ratingInfo.rating.toFixed(2) : '—')).join(', ');
+    return `${r.result.name} | EID:${r.key} | Supervisor:${r.supervisor} | FinalRate:${r.result.finalRate.toFixed(2)} | Status:${passes ? 'Pass' : 'Fail'} | DPU:${r.result.dpu !== null ? (r.result.dpu*100).toFixed(1)+'%' : 'N/A'} | DPO:${r.result.dpo !== null ? (r.result.dpo*100).toFixed(1)+'%' : 'N/A'} | Skills: ${skills}`;
+  });
+  let out = lines.join('\n');
+  if (rows.length > MAX_ROWS) out += `\n…and ${rows.length - MAX_ROWS} more employee(s) not shown (dataset truncated for length).`;
+  return out;
+}
+
+function cleanAIText(text){
+  if (!text) return text;
+  return text
+    .replace(/\$\$([^$]*)\$\$/g, (m, inner) => inner) // $$...$$
+    .replace(/\\text\{([^}]*)\}/g, '$1')               // \text{...}
+    .replace(/\\frac\{([^}]*)\}\{([^}]*)\}/g, '($1) / ($2)') // \frac{a}{b}
+    .replace(/\*\*([^*]+)\*\*/g, '$1')                  // **bold**
+    .replace(/\\times/g, '×')
+    .replace(/\\%/g, '%')
+    .replace(/\$/g, '')
+    .trim();
+}
+
+async function askAI(question, context){
+  if (!supabaseClient) return { error: "Supabase isn't configured." };
+  const { data: sessionData } = await supabaseClient.auth.getSession();
+  const token = sessionData && sessionData.session ? sessionData.session.access_token : null;
+  if (!token) return { error: 'Not signed in.' };
+
+  try{
+    const res = await fetch(SUPABASE_URL + '/functions/v1/ai-chat', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token,
+        'apikey': SUPABASE_ANON_KEY
+      },
+      body: JSON.stringify({ question, context })
+    });
+    const result = await res.json();
+    if (!res.ok){
+      return { error: result.error || 'AI request failed.' };
+    }
+    return { answer: cleanAIText(result.answer) };
+  } catch (err){
+    return { error: "couldn't reach the AI service — check that the ai-chat Edge Function is deployed." };
+  }
+}
+
+function sendChatMessage(){
+  const input = document.getElementById('chatInput');
+  const text = input.value.trim();
+  if (!text) return;
+  appendChatMessage(text, 'user');
+  input.value = '';
+
+  const localAnswer = answerQuery(text);
+  if (localAnswer !== null){
+    setTimeout(() => appendChatMessage(localAnswer, 'bot'), 150);
+    return;
+  }
+
+  const thinkingId = appendChatMessage('Thinking…', 'bot');
+  const context = buildDataContext();
+  askAI(text, context).then(result => {
+    removeChatMessage(thinkingId);
+    if (result.error){
+      appendChatMessage("I couldn't get an AI answer — " + result.error, 'bot');
+    } else {
+      appendChatMessage(result.answer, 'bot');
+    }
+  });
+}
+
+document.getElementById('chatFab').addEventListener('click', function(){
+  const panel = document.getElementById('chatPanel');
+  const opening = !panel.classList.contains('open');
+  panel.classList.toggle('open');
+  if (opening && document.getElementById('chatBody').children.length === 0){
+    appendChatMessage("Hi! Ask me about the loaded workbook — e.g. \"top 5 performers\", \"who's failing EDITS\", \"compare Jennifer and Captio\", \"average DPU\", \"list Lea's team\", or just a name. Anything else gets passed to AI.", 'bot');
+  }
+});
+document.getElementById('chatClose').addEventListener('click', function(){
+  document.getElementById('chatPanel').classList.remove('open');
+});
+document.getElementById('chatSend').addEventListener('click', sendChatMessage);
+document.getElementById('chatInput').addEventListener('keydown', function(e){
+  if (e.key === 'Enter') sendChatMessage();
+});
+
+document.getElementById('tmFab').addEventListener('click', function(){
+  const panel = document.getElementById('tmPanel');
+  const frame = document.getElementById('tmFrame');
+  if (!frame.getAttribute('src')){
+    frame.setAttribute('src', 'time-and-motion.html');
+  }
+  panel.classList.toggle('open');
+});
+document.getElementById('tmClose').addEventListener('click', function(){
+  document.getElementById('tmPanel').classList.remove('open');
+});
+
+seedDefaults();
+renderReferenceTable();
+renderAll();
+/* ---------------------------------------------------------------
+   AUTH SCREEN BACKGROUND — flowing ribbon animation (canvas)
+--------------------------------------------------------------- */
+(function(){
+  const canvas = document.getElementById('authBgCanvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  let w = 0, h = 0;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  let rafId = null;
+  let startTime = null;
+
+  const RIBBONS = [
+    { baseY: 0.28, amp: 46, freq: 1.6, speed: 0.00028, phase: 0,   width: 3,   color: 'rgba(198,161,91,0.55)', blur: 16 },
+    { baseY: 0.45, amp: 60, freq: 1.1, speed: 0.00022, phase: 1.3, width: 2,   color: 'rgba(198,161,91,0.32)', blur: 20 },
+    { baseY: 0.62, amp: 38, freq: 2.0, speed: 0.00035, phase: 2.6, width: 2.5, color: 'rgba(246,241,228,0.16)', blur: 12 },
+    { baseY: 0.76, amp: 52, freq: 1.4, speed: 0.00020, phase: 4.1, width: 1.5, color: 'rgba(198,161,91,0.22)', blur: 18 },
+  ];
+
+  function resize(){
+    const rect = canvas.parentElement.getBoundingClientRect();
+    w = rect.width;
+    h = rect.height;
+    canvas.width = w * dpr;
+    canvas.height = h * dpr;
+    canvas.style.width = w + 'px';
+    canvas.style.height = h + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  function drawRibbon(r, t){
+    ctx.save();
+    ctx.beginPath();
+    const step = 8;
+    for (let x = 0; x <= w + step; x += step){
+      const y = r.baseY * h
+        + Math.sin((x / w) * Math.PI * 2 * r.freq + t * r.speed + r.phase) * r.amp
+        + Math.sin((x / w) * Math.PI * 2 * r.freq * 0.5 + t * r.speed * 1.7 + r.phase) * (r.amp * 0.3);
+      if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.strokeStyle = r.color;
+    ctx.lineWidth = r.width;
+    ctx.shadowColor = r.color;
+    ctx.shadowBlur = r.blur;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function frame(t){
+    if (startTime === null) startTime = t;
+    const elapsed = t - startTime;
+    ctx.clearRect(0, 0, w, h);
+    RIBBONS.forEach(r => drawRibbon(r, elapsed));
+    rafId = requestAnimationFrame(frame);
+  }
+
+  function startAnim(){
+    if (rafId) return;
+    resize();
+    rafId = requestAnimationFrame(frame);
+  }
+  function stopAnim(){
+    if (rafId){ cancelAnimationFrame(rafId); rafId = null; }
+  }
+
+  window.addEventListener('resize', function(){ if (rafId) resize(); });
+
+  const overlay = document.getElementById('authOverlay');
+  if (overlay){
+    const observer = new MutationObserver(function(){
+      if (overlay.classList.contains('hidden')) stopAnim(); else startAnim();
+    });
+    observer.observe(overlay, { attributes: true, attributeFilter: ['class'] });
+    if (!overlay.classList.contains('hidden')) startAnim();
+  }
+})();
+
+checkExistingSession();
+</script>
+</body>
+</html>
