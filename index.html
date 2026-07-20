@@ -1733,24 +1733,24 @@ async function loadWorkbookFromCloud(){
 const DEFAULT_REFERENCE = {
   "OCN":                       { target: 14.5, attr: 34, r5: 1.5385, r4: 1.2222, r3: 1.00, r2: 0.6667, r1: 0 },
   "Outreach":                  { target: 9.5,  attr: 14, r5: 1.50,   r4: 1.2317, r3: 1.00, r2: 0.7779, r1: 0 },
-  "B vs D":                    { target: null, r5: 1.45,   r4: 1.2601, r3: 1.00, r2: 0.75,   r1: 0 },
+  "B vs D":                    { target: 6,    r5: 1.45,   r4: 1.2601, r3: 1.00, r2: 0.75,   r1: 0 },
   "EDITS":                     { target: 8,    attr: 8, r5: 1.6663, r4: 1.4326, r3: 1.00, r2: 0.6838, r1: 0 },
-  "C&S Pharma Admin":          { target: null, r5: 1.5862, r4: 1.30,   r3: 1.00, r2: 0.7138, r1: 0 },
-  "C&S Appeals Verification":  { target: null, r5: 1.4178, r4: 1.2356, r3: 1.00, r2: 0.7733, r1: 0 },
-  "AV Commercial":             { target: null, r5: 1.4178, r4: 1.2356, r3: 1.00, r2: 0.7733, r1: 0 },
-  "Clinical Appeals":          { target: null, r5: 1.5094, r4: 1.3113, r3: 1.00, r2: 0.8622, r1: 0 },
+  "C&S Pharma Admin":          { target: 8,    r5: 1.5862, r4: 1.30,   r3: 1.00, r2: 0.7138, r1: 0 },
+  "C&S Appeals Verification":  { target: 9,    r5: 1.4178, r4: 1.2356, r3: 1.00, r2: 0.7733, r1: 0 },
+  "AV Commercial":             { target: 9,    r5: 1.4178, r4: 1.2356, r3: 1.00, r2: 0.7733, r1: 0 },
+  "Clinical Appeals":          { target: 5.30, r5: 1.5094, r4: 1.3113, r3: 1.00, r2: 0.8622, r1: 0 },
   "A&M - Cancellation WB":     { target: 9,    r5: 2.60,   r4: 1.9990, r3: 1.00, r2: 0.80,   r1: 0 },
   "A&M - Cancellation SP":     { target: 16,   r5: 1.6667, r4: 1.4158, r3: 1.00, r2: 0.75,   r1: 0 },
   "A&M - Live":                { target: 25,   r5: 1.6667, r4: 1.4158, r3: 1.00, r2: 0.75,   r1: 0 },
-  "Outreach Denial":           { target: null, r5: 1.38,   r4: 1.19,   r3: 1.00, r2: 0.75,   r1: 0 },
-  "OBD Phone":                 { target: null, r5: 1.3587, r4: 1.1921, r3: 1.00, r2: 0.9239, r1: 0 },
+  "Outreach Denial":           { target: 10.50,r5: 1.38,   r4: 1.19,   r3: 1.00, r2: 0.75,   r1: 0 },
+  "OBD Phone":                 { target: 435,  r5: 1.3587, r4: 1.1921, r3: 1.00, r2: 0.9239, r1: 0 },
   "PartD_Phones":              { target: 500,  attr: 28, r5: 1.1788, r4: 1.0892, r3: 1.00, r2: 0.85,   r1: 0 },
   "Gen_Phones":                { target: 515,  attr: 28, r5: 1.2675, r4: 1.0775, r3: 1.00, r2: 0.9349, r1: 0 },
   "Fax":                       { target: 11,   attr: 25, r5: 1.2727, r4: 1.1682, r3: 1.00, r2: 0.8955, r1: 0 },
   "GLP_1":                     { target: 15,   attr: 25, r5: 1.2733, r4: 1.1680, r3: 1.00, r2: 0.8950, r1: 0 },
   "UHC_west":                  { target: 485,  attr: 28, r5: 1.1788, r4: 1.0891, r3: 1.00, r2: 0.8549, r1: 0 },
-  "Clinical Appeals Phone":    { target: null, r5: 1.1788, r4: 1.0891, r3: 1.00, r2: 0.8549, r1: 0 },
-  "Misroutes":                 { target: null, r5: 1.2741, r4: 1.1675, r3: 1.00, r2: 0.8934, r1: 0 }
+  "Clinical Appeals Phone":    { target: 485,  r5: 1.1788, r4: 1.0891, r3: 1.00, r2: 0.8549, r1: 0 },
+  "Misroutes":                 { target: 1.97, r5: 1.2741, r4: 1.1675, r3: 1.00, r2: 0.8934, r1: 0 }
 };
 
 let reference = {};
@@ -1814,7 +1814,7 @@ function normalizeKey(s){
   return String(s || "").trim().toLowerCase().replace(/\s+/g,' ');
 }
 
-const LOWER_IS_BETTER_SKILLS = ['partd_phones', 'uhc_west', 'gen_phones'];
+const LOWER_IS_BETTER_SKILLS = ['partd_phones', 'uhc_west', 'gen_phones', 'obd_phone', 'clinical_appeals_phone'];
 function isLowerBetterSkill(skillName){
   return LOWER_IS_BETTER_SKILLS.includes(normalizeKey(skillName).replace(/\s+/g, '_'));
 }
