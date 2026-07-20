@@ -1469,10 +1469,33 @@ function saveWorkbookToCloudDebounced(){
   _saveDebounceTimer = setTimeout(saveWorkbookToCloud, 800);
 }
 
+function mergeReferenceWithDefaults(loadedRef){
+  const merged = {};
+  const allKeys = new Set([...Object.keys(DEFAULT_REFERENCE), ...Object.keys(loadedRef || {})]);
+  allKeys.forEach(skillName => {
+    const def = DEFAULT_REFERENCE[skillName];
+    const loaded = loadedRef ? loadedRef[skillName] : null;
+    if (!loaded){
+      merged[skillName] = def ? Object.assign({}, def) : { target: null, r5: null, r4: null, r3: 1.00, r2: null, r1: 0 };
+      return;
+    }
+    const entry = Object.assign({}, loaded);
+    if (def){
+      ['target','r5','r4','r3','r2','r1'].forEach(field => {
+        if ((entry[field] === null || entry[field] === undefined) && def[field] !== null && def[field] !== undefined){
+          entry[field] = def[field];
+        }
+      });
+    }
+    merged[skillName] = entry;
+  });
+  return merged;
+}
+
 async function saveWorkbookToCloud(){
   if (!supabaseClient || !currentUserId) return;
   setCloudStatus('Saving to your account…', false);
-  const payload = { employees, qualityData, supervisorOf, reference };
+  const payload = { employees, qualityData, supervisorOf, managerOf, reference };
   const { error } = await supabaseClient
     .from('workbook_data')
     .upsert({
@@ -1507,7 +1530,8 @@ async function loadWorkbookFromCloud(){
   employees = data.payload.employees || {};
   qualityData = data.payload.qualityData || {};
   supervisorOf = data.payload.supervisorOf || {};
-  if (data.payload.reference) reference = data.payload.reference;
+  managerOf = data.payload.managerOf || {};
+  reference = mergeReferenceWithDefaults(data.payload.reference);
   currentFileName = data.file_name || null;
 
   renderReferenceTable();
