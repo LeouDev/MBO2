@@ -435,6 +435,7 @@
   }
   .toggle-btn.active{ background: var(--navy); color: var(--cream); }
   .comparison-chart{
+    position: relative;
     display: flex;
     align-items: flex-end;
     gap: 14px;
@@ -445,6 +446,24 @@
     overflow-y: hidden;
     scroll-snap-type: x proximity;
   }
+  .comparison-ref-line{
+    position: absolute;
+    left: 4px;
+    right: 4px;
+    border-top: 2px dashed var(--gold-deep);
+    z-index: 1;
+    pointer-events: none;
+  }
+  .comparison-ref-line span{
+    position: absolute;
+    right: 0;
+    bottom: 3px;
+    font-family: var(--r-mono);
+    font-size: 9px;
+    color: var(--gold-deep);
+    background: white;
+    padding: 0 3px;
+  }
   .comparison-bar-col{
     display: flex;
     flex-direction: column;
@@ -454,6 +473,8 @@
     width: 78px;
     height: 100%;
     scroll-snap-align: start;
+    position: relative;
+    z-index: 2;
   }
   .comparison-bar-value{
     font-family: var(--r-mono);
@@ -470,6 +491,9 @@
     border-radius: 4px 4px 0 0;
     min-height: 2px;
   }
+  .comparison-bar.bar-good{ background: var(--good); }
+  .comparison-bar.bar-warn{ background: var(--warn); }
+  .comparison-bar.bar-bad{ background: var(--bad); }
   .comparison-bar-label{
     margin-top: 8px;
     font-family: var(--r-mono);
@@ -2614,16 +2638,19 @@ function renderComparisonChart(){
     return;
   }
 
-  chartEl.innerHTML = data.map(d => {
+  const bars = data.map(d => {
     const value = comparisonMetric === 'passRate' ? d.passRate : d.penetrationRate;
     const pct = Math.max(2, Math.min(100, value));
     const valueLabel = value.toFixed(0) + '%';
+    const colorClass = value >= 90 ? 'bar-good' : (value >= 60 ? 'bar-warn' : 'bar-bad');
     return `<div class="comparison-bar-col" title="${escapeAttr(d.name)}: ${valueLabel} (${d.total} employee${d.total===1?'':'s'})">
       <div class="comparison-bar-value">${valueLabel}</div>
-      <div class="comparison-bar" style="height:${pct}%;"></div>
+      <div class="comparison-bar ${colorClass}" style="height:${pct}%;"></div>
       <div class="comparison-bar-label">${escapeHtml(d.name)}</div>
     </div>`;
   }).join('');
+
+  chartEl.innerHTML = `<div class="comparison-ref-line" style="bottom:90%;"><span>90%</span></div>` + bars;
 }
 
 function refreshComparisonIfOpen(){
