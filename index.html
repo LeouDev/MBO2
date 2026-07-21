@@ -1259,7 +1259,7 @@
               <button class="toggle-btn" data-value="manager" type="button">Per manager</button>
             </div>
             <div class="toggle-group" id="comparisonMetricToggle">
-              <button class="toggle-btn active" data-value="avgRating" type="button">Avg rating</button>
+              <button class="toggle-btn active" data-value="penetration" type="button">Prod Penetration</button>
               <button class="toggle-btn" data-value="passRate" type="button">Pass rate %</button>
             </div>
           </div>
@@ -2562,7 +2562,7 @@ document.getElementById('comparisonBlockHead').addEventListener('click', functio
    toggle between average rating and pass rate %
 --------------------------------------------------------------- */
 let comparisonGroupBy = 'skill'; // 'skill' | 'team' | 'manager'
-let comparisonMetric = 'avgRating'; // 'avgRating' | 'passRate'
+let comparisonMetric = 'penetration'; // 'penetration' | 'passRate'
 
 function computeComparisonData(){
   const keys = Object.keys(employees);
@@ -2583,17 +2583,12 @@ function computeComparisonData(){
     }
 
     groupNames.forEach(name => {
-      if (!groups[name]) groups[name] = { ratingSum: 0, ratingCount: 0, passCount: 0, total: 0 };
+      if (!groups[name]) groups[name] = { penetrationCount: 0, passCount: 0, total: 0 };
       const g = groups[name];
       g.total += 1;
       if (passes) g.passCount += 1;
-      if (comparisonGroupBy === 'skill'){
-        const row = result.rows.find(r => r.skillName === name);
-        if (row && row.ratingInfo){ g.ratingSum += row.ratingInfo.rating; g.ratingCount += 1; }
-      } else {
-        if (result.finalRate !== null && result.finalRate !== undefined && !result.hasMissing){
-          g.ratingSum += result.finalRate; g.ratingCount += 1;
-        }
+      if (result.finalRate !== null && result.finalRate !== undefined && result.finalRate >= 2.99){
+        g.penetrationCount += 1;
       }
     });
   });
@@ -2601,11 +2596,11 @@ function computeComparisonData(){
   const names = Object.keys(groups);
   const data = names.map(name => {
     const g = groups[name];
-    const avgRating = g.ratingCount > 0 ? g.ratingSum / g.ratingCount : 0;
+    const penetrationRate = g.total > 0 ? (g.penetrationCount / g.total * 100) : 0;
     const passRate = g.total > 0 ? (g.passCount / g.total * 100) : 0;
-    return { name, avgRating, passRate, total: g.total };
+    return { name, penetrationRate, passRate, total: g.total };
   });
-  data.sort((a,b) => (comparisonMetric === 'passRate' ? b.passRate - a.passRate : b.avgRating - a.avgRating));
+  data.sort((a,b) => (comparisonMetric === 'passRate' ? b.passRate - a.passRate : b.penetrationRate - a.penetrationRate));
   return data;
 }
 
@@ -2619,11 +2614,10 @@ function renderComparisonChart(){
     return;
   }
 
-  const max = comparisonMetric === 'passRate' ? 100 : 5;
   chartEl.innerHTML = data.map(d => {
-    const value = comparisonMetric === 'passRate' ? d.passRate : d.avgRating;
-    const pct = Math.max(2, Math.min(100, (value / max) * 100));
-    const valueLabel = comparisonMetric === 'passRate' ? value.toFixed(0) + '%' : value.toFixed(2);
+    const value = comparisonMetric === 'passRate' ? d.passRate : d.penetrationRate;
+    const pct = Math.max(2, Math.min(100, value));
+    const valueLabel = value.toFixed(0) + '%';
     return `<div class="comparison-bar-col" title="${escapeAttr(d.name)}: ${valueLabel} (${d.total} employee${d.total===1?'':'s'})">
       <div class="comparison-bar-value">${valueLabel}</div>
       <div class="comparison-bar" style="height:${pct}%;"></div>
