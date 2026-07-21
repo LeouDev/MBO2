@@ -588,6 +588,7 @@
   }
   table.ref input:focus{ outline: 1px solid var(--gold-deep); border-color: var(--gold-deep); }
   table.ref input.missing{ border-color: var(--bad); background: #FCEEEC; }
+  table.ref input.ref-readonly{ background: var(--cream-2); color: var(--ink-soft); cursor: default; }
   .badge-configured{
     display:inline-block;
     font-family: var(--r-mono);
@@ -1657,19 +1658,14 @@ function mergeReferenceWithDefaults(loadedRef){
   allKeys.forEach(skillName => {
     const def = DEFAULT_REFERENCE[skillName];
     const loaded = loadedRef ? loadedRef[skillName] : null;
-    if (!loaded){
-      merged[skillName] = def ? Object.assign({}, def) : { target: null, r5: null, r4: null, r3: 1.00, r2: null, r1: 0 };
+    if (def){
+      // Known skill: Target and thresholds always come from the code default,
+      // regardless of any past session edits or stale saved data.
+      merged[skillName] = Object.assign({}, def);
       return;
     }
-    const entry = Object.assign({}, loaded);
-    if (def){
-      ['target','r5','r4','r3','r2','r1'].forEach(field => {
-        if ((entry[field] === null || entry[field] === undefined) && def[field] !== null && def[field] !== undefined){
-          entry[field] = def[field];
-        }
-      });
-    }
-    merged[skillName] = entry;
+    // Unknown/custom skill (not in code) — keep whatever was loaded, or a blank shell.
+    merged[skillName] = loaded ? Object.assign({}, loaded) : { target: null, r5: null, r4: null, r3: 1.00, r2: null, r1: 0 };
   });
   return merged;
 }
@@ -2308,23 +2304,27 @@ function fieldInput(skillName, field, value){
   const isPct = field.startsWith('r');
   const displayVal = value === null || value === undefined ? '' : (isPct ? (value*100).toFixed(2) : value);
   const missingCls = (value === null || value === undefined) ? 'missing' : '';
-  return `<td><input class="${missingCls}" type="number" step="any" data-skill="${escapeAttr(skillName)}" data-field="${field}" value="${displayVal}" placeholder="${isPct ? '%' : '#'}" /></td>`;
+  const readonlyAttr = isPct ? 'readonly' : '';
+  const readonlyCls = isPct ? 'ref-readonly' : '';
+  return `<td><input class="${missingCls} ${readonlyCls}" type="number" step="any" data-skill="${escapeAttr(skillName)}" data-field="${field}" value="${displayVal}" placeholder="${isPct ? '%' : '#'}" ${readonlyAttr} /></td>`;
 }
 
 function onRefFieldChange(e){
   const skill = e.target.getAttribute('data-skill');
   const field = e.target.getAttribute('data-field');
+  if (field !== 'target') return; // rating thresholds are fixed/readonly
   const raw = e.target.value;
   if (raw === ''){
-    reference[skill][field] = (field === 'r1') ? 0 : null;
+    reference[skill][field] = null;
   } else {
     const num = parseFloat(raw);
-    reference[skill][field] = field.startsWith('r') ? num/100 : num;
+    reference[skill][field] = num;
   }
   e.target.classList.toggle('missing', reference[skill][field] === null || reference[skill][field] === undefined);
   renderReferenceTable();
   renderAll();
-  saveWorkbookToCloudDebounced();
+  // Target edits are session-only by design — not saved to the cloud,
+  // so a page refresh always reverts to the code's default target.
 }
 
 function renderEmployees(){
