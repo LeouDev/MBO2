@@ -1209,6 +1209,7 @@
               <div class="stat-huge-row">
                 <div class="stat-huge" id="teamRateStat">—</div>
                 <div class="mini-metrics">
+                  <span>Prod Penetration <b id="teamPenetrationStat">—</b></span>
                   <span>DPU <b id="teamDpuStat">—</b></span>
                   <span>DPO <b id="teamDpoStat">—</b></span>
                 </div>
@@ -2150,6 +2151,7 @@ function renderSummary(){
     document.getElementById('missingCount').textContent = '0';
     document.getElementById('teamDpuStat').textContent = '—';
     document.getElementById('teamDpoStat').textContent = '—';
+    document.getElementById('teamPenetrationStat').textContent = '—';
     exportBtn.disabled = true;
     updateTeamGauge(null);
     return;
@@ -2165,6 +2167,7 @@ function renderSummary(){
 
   let passCount = 0, reviewCount = 0, missingCount = 0;
   let dpuSum = 0, dpuCount = 0, dpoSum = 0, dpoCount = 0;
+  let penetrationCount = 0;
 
   keys.forEach(name => {
     const result = computeEmployee(name);
@@ -2174,11 +2177,14 @@ function renderSummary(){
     else missingCount++;
     if (result.dpu !== null){ dpuSum += result.dpu; dpuCount++; }
     if (result.dpo !== null){ dpoSum += result.dpo; dpoCount++; }
+    if (result.finalRate !== null && result.finalRate !== undefined && result.finalRate >= 2.99) penetrationCount++;
   });
 
   const passRate = keys.length > 0 ? (passCount / keys.length * 100) : null;
   document.getElementById('teamRateStat').textContent = passRate !== null ? passRate.toFixed(1) + '%' : '—';
   updateTeamGauge(passRate);
+  const penetrationRate = keys.length > 0 ? (penetrationCount / keys.length * 100) : null;
+  document.getElementById('teamPenetrationStat').textContent = penetrationRate !== null ? penetrationRate.toFixed(1) + '%' : '—';
   document.getElementById('teamDpuStat').textContent = dpuCount > 0 ? (dpuSum / dpuCount * 100).toFixed(1) + '%' : '—';
   document.getElementById('teamDpoStat').textContent = dpoCount > 0 ? (dpoSum / dpoCount * 100).toFixed(1) + '%' : '—';
   const scopeParts = [];
